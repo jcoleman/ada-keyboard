@@ -99,7 +99,7 @@ function connectSwitchesInDescriptorMatrix(matrix) {
         }
         var updatedKeySwitch = descriptor.keySwitch.connectTo(
           descriptor.parentConnector,
-          parentObject.properties.center,
+          parentObject.properties[descriptor.parentObjectConnectorName || "center"],
           false,
           0
         );
@@ -112,35 +112,24 @@ function connectSwitchesInDescriptorMatrix(matrix) {
 function switchPlateLeftHand() {
   var plate = CSG.cube({radius: [200, 200, SWITCH_PLATE_THICKNESS/2]});
 
-  var primaryKeyPlacementMatrix = [
-    [1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1, 1],
-    [0, 0, 1, 1, 1, 1],
-  ];
-  var columnOffsets = [-15, -19, -5, 0, -6, -11];
+  var primaryMatrix = buildUnconnectedSwitchDescriptorMatrix({
+    placementMatrix: [
+      [1, 1, 1, 1, 1, 1],
+      [1, 1, 1, 1, 1, 1],
+      [1, 1, 1, 1, 1, 1],
+      [1, 1, 1, 1, 1, 1],
+      [0, 0, 1, 1, 1, 1],
+    ],
+    columnOffsets: [0, -4, 14, 5, -6, -5],
+    rowOffsets: [],
+  });
 
-  var primaryKeySwitchMatrix = [];
-  for (var row = 0; row < primaryKeyPlacementMatrix.length; ++row) {
-    var rowOfSwitches = [];
-    primaryKeySwitchMatrix.push(rowOfSwitches);
-    var baseY = -100 + (row * SWITCH_CENTER_Y_SPACING);
-    for (var col = 0; col < primaryKeyPlacementMatrix[row].length; ++col) {
-      var keySwitch = null;
-      if (primaryKeyPlacementMatrix[row][col] == 1) {
-        var baseX = -100 + (col * SWITCH_CENTER_X_SPACING);
-        keySwitch = switchHole();
-        var switchCenter = [baseX, baseY - columnOffsets[col], 0];
-        var plateConnector = new CSG.Connector(switchCenter, [0, 0, 1], [0, 1, 0]);
-        plate.properties["switch_" + row + "_" + col] = plateConnector;
-        var sc = keySwitch.scounter;
-        keySwitch = keySwitch.connectTo(keySwitch.properties.center, plateConnector, true, 0);
-        keySwitch.scounter = sc;
-      }
-      rowOfSwitches.push(keySwitch);
-    }
-  }
+  var plateConnector = new CSG.Connector([-100, 100, 0], [0, 0, 1], [0, 1, 0]);
+  plate.properties.primaryMatrixConnector = plateConnector;
+  primaryMatrix[0][0].parentObject = plate;
+  primaryMatrix[0][0].parentConnector = plateConnector;
+  primaryMatrix[0][0].parentObjectConnectorName = "primaryMatrixConnector";
+  connectSwitchesInDescriptorMatrix(primaryMatrix);
 
   var thumbMatrix = buildUnconnectedSwitchDescriptorMatrix({
     placementMatrix: [
@@ -155,22 +144,22 @@ function switchPlateLeftHand() {
   var point = [0, -SWITCH_CENTER_Y_SPACING, 0];
   var connector = new CSG.Connector(point, [0, 0, 1], [0, 1, 0]);
   thumbMatrix[0][0].keySwitch.properties.parentSwitchCenter = connector;
-  var thumbMatrixParentRow = primaryKeySwitchMatrix[primaryKeySwitchMatrix.length - 1];
-  var thumbMatrixParentSwitch = thumbMatrixParentRow[thumbMatrixParentRow.length - 1];
-  thumbMatrix[0][0].parentObject = thumbMatrixParentSwitch;
+  var thumbMatrixParentRow = primaryMatrix[primaryMatrix.length - 1];
+  var thumbMatrixParent = thumbMatrixParentRow[thumbMatrixParentRow.length - 1];
+  thumbMatrix[0][0].parentObject = thumbMatrixParent.keySwitch;
   thumbMatrix[0][0].parentConnector = connector;
 
   connectSwitchesInDescriptorMatrix(thumbMatrix);
 
   var switches = [];
-  var matrices = [primaryKeySwitchMatrix, thumbMatrix];
+  var matrices = [primaryMatrix, thumbMatrix];
   for (var h = 0; h < matrices.length; ++h) {
     var matrix = matrices[h];
     for (var i = 0; i < matrix.length; ++i) {
       var row = matrix[i];
       for (var j = 0; j < row.length; ++j) {
         if (row[j]) {
-          switches.push(row[j].keySwitch || row[j]);
+          switches.push(row[j].keySwitch);
         }
       }
     }
