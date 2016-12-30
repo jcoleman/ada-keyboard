@@ -44,14 +44,16 @@ function buildUnconnectedSwitchDescriptorMatrix(opts={placementMatrix: [[]], col
 
   for (var row = 0; row < placementMatrix.length; ++row) {
     var baseY = row * SWITCH_CENTER_Y_SPACING;
+
     resultMatrix.push([]);
     for (var col = 0; col < placementMatrix[row].length; ++col) {
       var result = {
         keySwitch: switchHole(),
         parentSwitchLocation: null,
         parentConnector: null,
+        ownLocation: [row, col],
       };
-      result.ownLocation = [row, col];
+
       var baseX = col * SWITCH_CENTER_X_SPACING;
       if (col > 0) {
         // Connect switch to previous switch in row.
@@ -66,6 +68,9 @@ function buildUnconnectedSwitchDescriptorMatrix(opts={placementMatrix: [[]], col
       } else {
         // Switch at [0, 0] will be connected later.
       }
+
+      result.present = placementMatrix[row][col] == 1;
+
       resultMatrix[row].push(result);
     }
   }
@@ -111,6 +116,7 @@ function connectSwitchesInDescriptorMatrix(matrix) {
 
 function switchPlateLeftHand() {
   var plate = CSG.cube({radius: [200, 200, SWITCH_PLATE_THICKNESS/2]});
+  plate.properties.center = new CSG.Connector([0, 0, 0], [0, 0, 1], [0, 1, 0]);
 
   var primaryMatrix = buildUnconnectedSwitchDescriptorMatrix({
     placementMatrix: [
@@ -124,11 +130,10 @@ function switchPlateLeftHand() {
     rowOffsets: [],
   });
 
-  var plateConnector = new CSG.Connector([-100, 100, 0], [0, 0, 1], [0, 1, 0]);
-  plate.properties.primaryMatrixConnector = plateConnector;
+  var plateConnector = new CSG.Connector([-150, 150, 0], [0, 0, 1], [0, 1, 0]);
   primaryMatrix[0][0].parentObject = plate;
   primaryMatrix[0][0].parentConnector = plateConnector;
-  primaryMatrix[0][0].parentObjectConnectorName = "primaryMatrixConnector";
+
   connectSwitchesInDescriptorMatrix(primaryMatrix);
 
   var thumbMatrix = buildUnconnectedSwitchDescriptorMatrix({
@@ -158,7 +163,7 @@ function switchPlateLeftHand() {
     for (var i = 0; i < matrix.length; ++i) {
       var row = matrix[i];
       for (var j = 0; j < row.length; ++j) {
-        if (row[j]) {
+        if (row[j].present) {
           switches.push(row[j].keySwitch);
         }
       }
