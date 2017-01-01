@@ -124,7 +124,7 @@ function switchPlateLeftHand() {
       [1, 1, 1, 1, 1, 1],
       [1, 1, 1, 1, 1, 1],
       [1, 1, 1, 1, 1, 1],
-      [0, 0, 1, 1, 1, 1],
+      [0, 0, 1, 1, 1, 0],
     ],
     columnOffsets: [0, -4, 14, 5, -6, -5],
     rowOffsets: [],
@@ -149,7 +149,7 @@ function switchPlateLeftHand() {
   var point = [0, -SWITCH_CENTER_Y_SPACING, 0];
   var connector = new CSG.Connector(point, [0, 0, 1], [0, 1, 0]);
   thumbMatrix[0][0].keySwitch.properties.parentSwitchCenter = connector;
-  var thumbMatrixParentRow = primaryMatrix[primaryMatrix.length - 1];
+  var thumbMatrixParentRow = primaryMatrix[primaryMatrix.length - 2];
   var thumbMatrixParent = thumbMatrixParentRow[thumbMatrixParentRow.length - 1];
   thumbMatrix[0][0].parentObject = thumbMatrixParent.keySwitch;
   thumbMatrix[0][0].parentConnector = connector;
