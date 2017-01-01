@@ -84,7 +84,7 @@ function buildUnconnectedSwitchDescriptorMatrix(opts={placementMatrix: [[]], col
 // connection information (if any) is added to the switch in
 // this matrix that links it to another object since connections
 // don't cause cascading changes.
-function connectSwitchesInDescriptorMatrix(matrix) {
+function connectSwitchesInDescriptorMatrix(matrix, opts={center: false}) {
   for (var row = 0; row < matrix.length; ++row) {
     for (var col = 0; col < matrix[row].length; ++col) {
       var descriptor = matrix[row][col];
@@ -102,7 +102,11 @@ function connectSwitchesInDescriptorMatrix(matrix) {
         if (!descriptor.keySwitch.properties.parentSwitchCenter && descriptor.parentConnector) {
           descriptor.keySwitch.properties.parentSwitchCenter = descriptor.parentConnector;
         }
-        var updatedKeySwitch = descriptor.keySwitch.connectTo(
+        var updatedKeySwitch = descriptor.keySwitch
+        if (opts.center) {
+          updatedKeySwitch = updatedKeySwitch.center();
+        }
+        updatedKeySwitch = updatedKeySwitch.connectTo(
           descriptor.parentConnector,
           parentObject.properties[descriptor.parentObjectConnectorName || "center"],
           false,
@@ -112,12 +116,64 @@ function connectSwitchesInDescriptorMatrix(matrix) {
       }
     }
   }
-};
+}
+
+function hullForMatrix(matrix, opts={radiusFromSwitchHole: 0}) {
+  var borderSwitches = [];
+
+  // Top row
+  for (var col = 0; col < matrix[0].length; ++col) {
+    for (var row = 0; row < matrix.length; ++row) {
+      if (matrix[row][col].present) {
+        borderSwitches.push(matrix[row][col]);
+        break;
+      }
+    }
+  }
+
+  // Right column
+  for (var row = 0; row < matrix.length; ++row) {
+    for (var col = matrix[row].length - 1; col >= 0; --col) {
+      if (matrix[row][col].present) {
+        borderSwitches.push(matrix[row][col]);
+        break;
+      }
+    }
+  }
+
+  // Bottom row
+  for (var col = matrix[0].length - 1; col >= 0; --col) {
+    for (var row = matrix.length - 1; row >= 0; --row) {
+      if (matrix[row][col].present) {
+        borderSwitches.push(matrix[row][col]);
+        break;
+      }
+    }
+  }
+
+  // Left column
+  for (var row = matrix.length - 1; row >= 0; --row) {
+    for (var col = 0; col < matrix[row].length; ++col) {
+      if (matrix[row][col].present) {
+        borderSwitches.push(matrix[row][col]);
+        break;
+      }
+    }
+  }
+
+  // Generate bounding squares for each switch.
+  var borderSquares = [];
+  for (var i = 0; i < borderSwitches.length; ++i) {
+    var bounds = borderSwitches[i].keySwitch.getBounds();
+    var center = [(bounds[0].x + bounds[1].x) / 2, (bounds[0].y + bounds[1].y) / 2];
+    var square = CAG.rectangle({center: center, radius: (SWITCH_CENTER_Y_SPACING / 2) + opts.radiusFromSwitchHole});
+    borderSquares.push(square);
+  }
+
+  return hull(borderSquares);
+}
 
 function switchPlateLeftHand() {
-  var plate = CSG.cube({radius: [200, 200, SWITCH_PLATE_THICKNESS/2]});
-  plate.properties.center = new CSG.Connector([0, 0, 0], [0, 0, 1], [0, 1, 0]);
-
   var primaryMatrix = buildUnconnectedSwitchDescriptorMatrix({
     placementMatrix: [
       [1, 1, 1, 1, 1, 1],
@@ -130,12 +186,6 @@ function switchPlateLeftHand() {
     rowOffsets: [],
   });
 
-  var plateConnector = new CSG.Connector([-150, 150, 0], [0, 0, 1], [0, 1, 0]);
-  primaryMatrix[0][0].parentObject = plate;
-  primaryMatrix[0][0].parentConnector = plateConnector;
-
-  connectSwitchesInDescriptorMatrix(primaryMatrix);
-
   var thumbMatrix = buildUnconnectedSwitchDescriptorMatrix({
     placementMatrix: [
       [1, 1],
@@ -145,16 +195,48 @@ function switchPlateLeftHand() {
     rowOffsets: [],
   });
 
+  // Layout initial relative switch positions for primary matrix (required for hull calculation).
+  connectSwitchesInDescriptorMatrix(primaryMatrix, {center: true});
+
   // Set up connection from thumb matrix to primary matrix.
-  var point = [0, -SWITCH_CENTER_Y_SPACING, 0];
-  var connector = new CSG.Connector(point, [0, 0, 1], [0, 1, 0]);
-  thumbMatrix[0][0].keySwitch.properties.parentSwitchCenter = connector;
   var thumbMatrixParentRow = primaryMatrix[primaryMatrix.length - 2];
   var thumbMatrixParent = thumbMatrixParentRow[thumbMatrixParentRow.length - 1];
   thumbMatrix[0][0].parentObject = thumbMatrixParent.keySwitch;
-  thumbMatrix[0][0].parentConnector = connector;
+  thumbMatrix[0][0].parentConnector = new CSG.Connector([0, -SWITCH_CENTER_Y_SPACING, 0], [0, 0, 1], [0, 1, 0]);
 
-  connectSwitchesInDescriptorMatrix(thumbMatrix);
+  // Layout initial relative switch positions for thumb matrix (required for hull calculation).
+  connectSwitchesInDescriptorMatrix(thumbMatrix, {center: true});
+
+  var primaryExteriorHull = hullForMatrix(primaryMatrix, {radiusFromSwitchHole: 10});
+  var primarySwitchPlate = linear_extrude({radius: SWITCH_PLATE_THICKNESS / 2}, primaryExteriorHull);
+
+  var thumbExteriorHull = hullForMatrix(thumbMatrix, {radiusFromSwitchHole: 10});
+  var thumbSwitchPlate = linear_extrude({radius: SWITCH_PLATE_THICKNESS / 2}, thumbExteriorHull);
+
+  // Connect primary matrix to primary switch plate.
+  primaryMatrix[0][0].parentObject = primarySwitchPlate;
+  primaryMatrix[0][0].parentObjectConnectorName = "primarySwitchPlateConnector";
+  primarySwitchPlate.properties.primarySwitchPlateConnector = new CSG.Connector(
+    primaryMatrix[0][0].keySwitch.properties.center.point,
+    [0, 0, 1],
+    [0, 1, 0]
+  );
+  // These two points are intentionally identical.
+  primaryMatrix[0][0].parentConnector = primarySwitchPlate.properties.primarySwitchPlateConnector;
+  connectSwitchesInDescriptorMatrix(primaryMatrix, {center: true});
+
+  // Connect thumb switch plate to thumb matrix.
+  thumbSwitchPlate.properties.thumbMatrixConnector = new CSG.Connector(
+    thumbMatrix[0][0].keySwitch.properties.center.point,
+    [0, 0, 1],
+    [0, 1, 0]
+  );
+  thumbSwitchPlate = thumbSwitchPlate.connectTo(
+    thumbSwitchPlate.properties.thumbMatrixConnector,
+    thumbMatrix[0][0].keySwitch.properties.center,
+    false,
+    0
+  );
 
   var switches = [];
   var matrices = [primaryMatrix, thumbMatrix];
@@ -169,10 +251,12 @@ function switchPlateLeftHand() {
       }
     }
   }
+
+  var switchPlate = primarySwitchPlate.union(thumbSwitchPlate);
   for (var i = 0; i < switches.length; ++i) {
-    plate = plate.subtract(switches[i]);
+    switchPlate = switchPlate.subtract(switches[i]);
   }
-  return plate;
+  return switchPlate;
 }
 
 function main() {
