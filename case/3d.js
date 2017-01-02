@@ -196,7 +196,7 @@ function switchPlateLeftHand() {
       [1, 1],
     ],
     columnOffsets: [0, -2],
-    rowOffsets: [],
+    rowOffsets: [0, 6],
   });
 
   // Layout initial relative switch positions for primary matrix (required for hull calculation).
@@ -206,7 +206,7 @@ function switchPlateLeftHand() {
   var thumbMatrixParentRow = primaryMatrix[primaryMatrix.length - 2];
   var thumbMatrixParent = thumbMatrixParentRow[thumbMatrixParentRow.length - 1];
   thumbMatrix[0][0].parentObject = thumbMatrixParent.keySwitch;
-  thumbMatrix[0][0].parentConnector = new CSG.Connector([0, SWITCH_CENTER_Y_SPACING, 0], [0, 0, 1], [0, 1, 0]);
+  thumbMatrix[0][0].parentConnector = new CSG.Connector([-4, SWITCH_CENTER_Y_SPACING + 3, 0], [0, 0, 1], [0, 1, 0]);
 
   // Layout initial relative switch positions for thumb matrix (required for hull calculation).
   connectSwitchesInDescriptorMatrix(thumbMatrix, {center: true});
@@ -233,53 +233,58 @@ function switchPlateLeftHand() {
   primaryMatrix[0][0].parentConnector = primaryPlate.properties.primarySwitchPlateConnector;
   connectSwitchesInDescriptorMatrix(primaryMatrix, {center: true});
 
+  // Build switch plates.
+  var primaryMatrixDescriptor = {
+    matrix: primaryMatrix,
+    plate: primaryPlate,
+    cutout: primaryInteriorCutout,
+  };
+  var thumbMatrixDescriptor = {
+    matrix: thumbMatrix,
+    plate: thumbPlate,
+    cutout: thumbInteriorCutout,
+  };
+  var matrixDescriptors = [primaryMatrixDescriptor, thumbMatrixDescriptor];
+  for (var m = 0; m < matrixDescriptors.length; ++m) {
+    var matrixDescriptor = matrixDescriptors[m];
+    var switches = null;
+    for (var i = 0; i < matrixDescriptor.matrix.length; ++i) {
+      var row = matrixDescriptor.matrix[i];
+      for (var j = 0; j < row.length; ++j) {
+        if (row[j].present) {
+          switches = switches ? switches.union(row[j].keySwitch) : row[j].keySwitch;
+        }
+      }
+    }
+    matrixDescriptor.switches = switches.translate([0, 0, -switches.getBounds()[0].z]);
+  }
+
   // Connect thumb switch plate to thumb matrix.
-  thumbPlate.properties.thumbMatrixConnector = new CSG.Connector(
+  var thumbMatrixRotation = -12;
+  thumbMatrixDescriptor.plate.properties.thumbMatrixConnector = new CSG.Connector(
     thumbMatrix[0][0].keySwitch.properties.center.point,
     [0, 0, 1],
     [0, 1, 0]
   );
-  // Adjust the spacer first so that we don't use the updated proerty.
+  // Adjust the plate last so that we don't use the updated property
+  // when adjusting the other plate derivatives.
   // While the space is at a different Z coordinate, the two connectors
   // used have identical Z coordinates, so the transformation is sound.
-  thumbInteriorCutout = thumbInteriorCutout.connectTo(
-    thumbPlate.properties.thumbMatrixConnector,
-    thumbMatrix[0][0].keySwitch.properties.center,
-    false,
-    0
-  );
-  thumbPlate = thumbPlate.connectTo(
-    thumbPlate.properties.thumbMatrixConnector,
-    thumbMatrix[0][0].keySwitch.properties.center,
-    false,
-    0
-  );
-
-  var switches = [];
-  var matrices = [primaryMatrix, thumbMatrix];
-  for (var h = 0; h < matrices.length; ++h) {
-    var matrix = matrices[h];
-    for (var i = 0; i < matrix.length; ++i) {
-      var row = matrix[i];
-      for (var j = 0; j < row.length; ++j) {
-        if (row[j].present) {
-          switches.push(row[j].keySwitch);
-        }
-      }
-    }
+  var thumbPlateProperties = ["cutout", "switches", "plate"];
+  for (var i = 0; i < thumbPlateProperties.length; ++i) {
+    var property = thumbPlateProperties[i];
+    thumbMatrixDescriptor[property] = thumbMatrixDescriptor[property].connectTo(
+      thumbMatrixDescriptor.plate.properties.thumbMatrixConnector,
+      thumbMatrix[0][0].keySwitch.properties.center,
+      false,
+      thumbMatrixRotation
+    );
   }
 
-  var fullPlate = primaryPlate.union(thumbPlate);
-  var fullInteriorCutout = primaryInteriorCutout.union(thumbInteriorCutout);
+  var fullPlate = primaryMatrixDescriptor.plate.union(thumbMatrixDescriptor.plate);
+  var fullInteriorCutout = primaryMatrixDescriptor.cutout.union(thumbMatrixDescriptor.cutout);
   var fullSpacer = fullPlate.subtract(fullInteriorCutout);
-
-  var switchPlate = fullPlate;
-  for (var i = 0; i < switches.length; ++i) {
-    var keySwitch = switches[i];
-    var switchBounds = keySwitch.getBounds();
-    keySwitch = keySwitch.translate([0, 0, -switchBounds[0].z]);
-    switchPlate = switchPlate.subtract(keySwitch);
-  }
+  var switchPlate = fullPlate.subtract(primaryMatrixDescriptor.switches.union(thumbMatrixDescriptor.switches));
 
   return switchPlate.translate([0, 0, SWITCH_PLATE_THICKNESS]).union(fullSpacer);
 }
