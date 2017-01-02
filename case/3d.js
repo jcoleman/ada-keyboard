@@ -118,44 +118,45 @@ function connectSwitchesInDescriptorMatrix(matrix, opts={center: false}) {
   }
 }
 
-function hullForMatrix(matrix, opts={radiusFromSwitchHole: 0}) {
-  var borderSwitches = [];
+function hullForMatrix(matrix, opts={radius: 0, offset: {}}) {
+  var radius = opts.radius || 0;
+  var offset = opts.offset || {};
 
-  // Top row
+  var topRow = [];
   for (var col = 0; col < matrix[0].length; ++col) {
     for (var row = 0; row < matrix.length; ++row) {
       if (matrix[row][col].present) {
-        borderSwitches.push(matrix[row][col]);
+        topRow.push(matrix[row][col].keySwitch.translate([0, offset.top || 0, 0]));
         break;
       }
     }
   }
 
-  // Right column
+  var rightColumn = [];
   for (var row = 0; row < matrix.length; ++row) {
     for (var col = matrix[row].length - 1; col >= 0; --col) {
       if (matrix[row][col].present) {
-        borderSwitches.push(matrix[row][col]);
+        rightColumn.push(matrix[row][col].keySwitch.translate([offset.right || 0, 0, 0]));
         break;
       }
     }
   }
 
-  // Bottom row
+  var bottomRow = [];
   for (var col = matrix[0].length - 1; col >= 0; --col) {
     for (var row = matrix.length - 1; row >= 0; --row) {
       if (matrix[row][col].present) {
-        borderSwitches.push(matrix[row][col]);
+        bottomRow.push(matrix[row][col].keySwitch.translate([0, offset.bottom || 0, 0]));
         break;
       }
     }
   }
 
-  // Left column
+  var leftColumn = [];
   for (var row = matrix.length - 1; row >= 0; --row) {
     for (var col = 0; col < matrix[row].length; ++col) {
       if (matrix[row][col].present) {
-        borderSwitches.push(matrix[row][col]);
+        leftColumn.push(matrix[row][col].keySwitch.translate([offset.left || 0, 0, 0]));
         break;
       }
     }
@@ -163,11 +164,14 @@ function hullForMatrix(matrix, opts={radiusFromSwitchHole: 0}) {
 
   // Generate bounding squares for each switch.
   var borderSquares = [];
-  for (var i = 0; i < borderSwitches.length; ++i) {
-    var bounds = borderSwitches[i].keySwitch.getBounds();
-    var center = [(bounds[0].x + bounds[1].x) / 2, (bounds[0].y + bounds[1].y) / 2];
-    var square = CAG.rectangle({center: center, radius: (SWITCH_CENTER_Y_SPACING / 2) + opts.radiusFromSwitchHole});
-    borderSquares.push(square);
+  var borderSegments = [topRow, rightColumn, bottomRow, leftColumn];
+  for (var segment = 0; segment < borderSegments.length; ++segment) {
+    for (var i = 0; i < borderSegments[segment].length; ++i) {
+      var bounds = borderSegments[segment][i].getBounds();
+      var center = [(bounds[0].x + bounds[1].x) / 2, (bounds[0].y + bounds[1].y) / 2];
+      var square = CAG.rectangle({center: center, radius: (SWITCH_CENTER_Y_SPACING / 2) + radius});
+      borderSquares.push(square);
+    }
   }
 
   return hull(borderSquares);
@@ -207,10 +211,10 @@ function switchPlateLeftHand() {
   // Layout initial relative switch positions for thumb matrix (required for hull calculation).
   connectSwitchesInDescriptorMatrix(thumbMatrix, {center: true});
 
-  var primaryExteriorHull = hullForMatrix(primaryMatrix, {radiusFromSwitchHole: 10});
+  var primaryExteriorHull = hullForMatrix(primaryMatrix, {radius: 10, offset: {bottom: -25}});
   var primarySwitchPlate = linear_extrude({radius: SWITCH_PLATE_THICKNESS / 2}, primaryExteriorHull);
 
-  var thumbExteriorHull = hullForMatrix(thumbMatrix, {radiusFromSwitchHole: 10});
+  var thumbExteriorHull = hullForMatrix(thumbMatrix, {radius: 10});
   var thumbSwitchPlate = linear_extrude({radius: SWITCH_PLATE_THICKNESS / 2}, thumbExteriorHull);
 
   // Connect primary matrix to primary switch plate.
