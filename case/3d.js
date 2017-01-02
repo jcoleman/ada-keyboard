@@ -63,7 +63,7 @@ function buildUnconnectedSwitchDescriptorMatrix(opts={placementMatrix: [[]], col
       } else if (row > 0) {
         // Connect switch to first switch in previous row.
         result.parentSwitchLocation = [row - 1, col];
-        var point = [baseX + (rowOffsets[row] || 0), SWITCH_CENTER_Y_SPACING, 0];
+        var point = [baseX - (rowOffsets[row] || 0), SWITCH_CENTER_Y_SPACING, 0];
         result.parentConnector = new CSG.Connector(point, [0, 0, 1], [0, 1, 0]);
       } else {
         // Switch at [0, 0] will be connected later.
