@@ -58,12 +58,12 @@ function buildUnconnectedSwitchDescriptorMatrix(opts={placementMatrix: [[]], col
       if (col > 0) {
         // Connect switch to previous switch in row.
         result.parentSwitchLocation = [row, col - 1];
-        var point = [SWITCH_CENTER_X_SPACING, columnOffsets[col] || 0, 0];
+        var point = [-SWITCH_CENTER_X_SPACING, -columnOffsets[col] || 0, 0];
         result.parentConnector = new CSG.Connector(point, [0, 0, 1], [0, 1, 0]);
       } else if (row > 0) {
         // Connect switch to first switch in previous row.
         result.parentSwitchLocation = [row - 1, col];
-        var point = [baseX + (rowOffsets[row] || 0), -SWITCH_CENTER_Y_SPACING, 0];
+        var point = [baseX + (rowOffsets[row] || 0), SWITCH_CENTER_Y_SPACING, 0];
         result.parentConnector = new CSG.Connector(point, [0, 0, 1], [0, 1, 0]);
       } else {
         // Switch at [0, 0] will be connected later.
@@ -202,7 +202,7 @@ function switchPlateLeftHand() {
   var thumbMatrixParentRow = primaryMatrix[primaryMatrix.length - 2];
   var thumbMatrixParent = thumbMatrixParentRow[thumbMatrixParentRow.length - 1];
   thumbMatrix[0][0].parentObject = thumbMatrixParent.keySwitch;
-  thumbMatrix[0][0].parentConnector = new CSG.Connector([0, -SWITCH_CENTER_Y_SPACING, 0], [0, 0, 1], [0, 1, 0]);
+  thumbMatrix[0][0].parentConnector = new CSG.Connector([0, SWITCH_CENTER_Y_SPACING, 0], [0, 0, 1], [0, 1, 0]);
 
   // Layout initial relative switch positions for thumb matrix (required for hull calculation).
   connectSwitchesInDescriptorMatrix(thumbMatrix, {center: true});
