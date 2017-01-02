@@ -212,31 +212,44 @@ function switchPlateLeftHand() {
   connectSwitchesInDescriptorMatrix(thumbMatrix, {center: true});
 
   var primaryExteriorHull = hullForMatrix(primaryMatrix, {radius: 10, offset: {bottom: -25}});
-  var primarySwitchPlate = linear_extrude({radius: SWITCH_PLATE_THICKNESS / 2}, primaryExteriorHull);
+  var primaryInteriorHull = hullForMatrix(primaryMatrix, {radius: 3});
+  var primaryPlate = linear_extrude({height: SWITCH_PLATE_THICKNESS}, primaryExteriorHull);
+  var primaryInteriorCutout = linear_extrude({height: SWITCH_PLATE_THICKNESS}, primaryInteriorHull);
 
   var thumbExteriorHull = hullForMatrix(thumbMatrix, {radius: 10});
-  var thumbSwitchPlate = linear_extrude({radius: SWITCH_PLATE_THICKNESS / 2}, thumbExteriorHull);
+  var thumbInteriorHull = hullForMatrix(thumbMatrix, {radius: 3});
+  var thumbPlate = linear_extrude({height: SWITCH_PLATE_THICKNESS}, thumbExteriorHull);
+  var thumbInteriorCutout = linear_extrude({height: SWITCH_PLATE_THICKNESS}, thumbInteriorHull);
 
   // Connect primary matrix to primary switch plate.
-  primaryMatrix[0][0].parentObject = primarySwitchPlate;
+  primaryMatrix[0][0].parentObject = primaryPlate;
   primaryMatrix[0][0].parentObjectConnectorName = "primarySwitchPlateConnector";
-  primarySwitchPlate.properties.primarySwitchPlateConnector = new CSG.Connector(
+  primaryPlate.properties.primarySwitchPlateConnector = new CSG.Connector(
     primaryMatrix[0][0].keySwitch.properties.center.point,
     [0, 0, 1],
     [0, 1, 0]
   );
   // These two points are intentionally identical.
-  primaryMatrix[0][0].parentConnector = primarySwitchPlate.properties.primarySwitchPlateConnector;
+  primaryMatrix[0][0].parentConnector = primaryPlate.properties.primarySwitchPlateConnector;
   connectSwitchesInDescriptorMatrix(primaryMatrix, {center: true});
 
   // Connect thumb switch plate to thumb matrix.
-  thumbSwitchPlate.properties.thumbMatrixConnector = new CSG.Connector(
+  thumbPlate.properties.thumbMatrixConnector = new CSG.Connector(
     thumbMatrix[0][0].keySwitch.properties.center.point,
     [0, 0, 1],
     [0, 1, 0]
   );
-  thumbSwitchPlate = thumbSwitchPlate.connectTo(
-    thumbSwitchPlate.properties.thumbMatrixConnector,
+  // Adjust the spacer first so that we don't use the updated proerty.
+  // While the space is at a different Z coordinate, the two connectors
+  // used have identical Z coordinates, so the transformation is sound.
+  thumbInteriorCutout = thumbInteriorCutout.connectTo(
+    thumbPlate.properties.thumbMatrixConnector,
+    thumbMatrix[0][0].keySwitch.properties.center,
+    false,
+    0
+  );
+  thumbPlate = thumbPlate.connectTo(
+    thumbPlate.properties.thumbMatrixConnector,
     thumbMatrix[0][0].keySwitch.properties.center,
     false,
     0
@@ -256,11 +269,19 @@ function switchPlateLeftHand() {
     }
   }
 
-  var switchPlate = primarySwitchPlate.union(thumbSwitchPlate);
+  var fullPlate = primaryPlate.union(thumbPlate);
+  var fullInteriorCutout = primaryInteriorCutout.union(thumbInteriorCutout);
+  var fullSpacer = fullPlate.subtract(fullInteriorCutout);
+
+  var switchPlate = fullPlate;
   for (var i = 0; i < switches.length; ++i) {
-    switchPlate = switchPlate.subtract(switches[i]);
+    var keySwitch = switches[i];
+    var switchBounds = keySwitch.getBounds();
+    keySwitch = keySwitch.translate([0, 0, -switchBounds[0].z]);
+    switchPlate = switchPlate.subtract(keySwitch);
   }
-  return switchPlate;
+
+  return switchPlate.translate([0, 0, SWITCH_PLATE_THICKNESS]).union(fullSpacer);
 }
 
 function main() {
