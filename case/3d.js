@@ -7,6 +7,8 @@ var SWITCH_NOTCH_DEPTH = 0.8128;
 var SWITCH_CENTER_Y_SPACING = 19;
 var SWITCH_CENTER_X_SPACING = 19;
 
+var INCLUDE_KEY_CAPS_FOR_DEBUGGING = true;
+
 function installLibraryExtensions() {
   CSG.prototype.getBoundsCenter = function() {
     var bounds = this.getBounds();
@@ -16,6 +18,22 @@ function installLibraryExtensions() {
       (bounds[0].z + bounds[1].z) / 2,
     ]);
   }
+}
+
+function keyCap() {
+  var cap = CSG.cube({
+    radius: [17.9 / 2, 17.9 / 2, 8 / 2],
+  });
+  var capBaseZ = cap.getBounds()[0].z;
+  var support = CSG.cylinder({
+    start: [0, 0, capBaseZ],
+    end: [0, 0, capBaseZ - 6.4],
+    radius: 4,
+  });
+  cap = cap.union(support);
+  cap = cap.translate([0, 0, -cap.getBounds()[0].z]);
+  cap.properties.baseCenter = new CSG.Connector([0, 0, 0], [0, 0, 1], [0, 1, 0]);
+  return cap.setColor([0, 0, 1]);
 }
 
 // Returns the filled solid of a switch hole.
@@ -60,6 +78,7 @@ function buildUnconnectedSwitchDescriptorMatrix(opts={placementMatrix: [[]], col
     for (var col = 0; col < placementMatrix[row].length; ++col) {
       var result = {
         keySwitch: switchHole(),
+        cap: keyCap(),
         parentSwitchLocation: null,
         parentConnector: null,
         ownLocation: [row, col],
@@ -114,8 +133,10 @@ function connectSwitchesInDescriptorMatrix(matrix, opts={center: false}) {
           descriptor.keySwitch.properties.parentSwitchCenter = descriptor.parentConnector;
         }
         var updatedKeySwitch = descriptor.keySwitch
+        var updatedCap = descriptor.cap;
         if (opts.center) {
           updatedKeySwitch = updatedKeySwitch.center();
+          updatedCap = updatedCap.center();
         }
         updatedKeySwitch = updatedKeySwitch.connectTo(
           descriptor.parentConnector,
@@ -124,6 +145,12 @@ function connectSwitchesInDescriptorMatrix(matrix, opts={center: false}) {
           0
         );
         descriptor.keySwitch = updatedKeySwitch;
+        descriptor.cap = updatedCap.connectTo(
+          updatedCap.properties.baseCenter,
+          descriptor.keySwitch.properties.center,
+          false,
+          0
+        );
       }
     }
   }
@@ -284,15 +311,18 @@ function switchPlateLeftHand() {
   for (var m = 0; m < matrixDescriptors.length; ++m) {
     var matrixDescriptor = matrixDescriptors[m];
     var switches = null;
+    var keyCaps = null;
     for (var i = 0; i < matrixDescriptor.matrix.length; ++i) {
       var row = matrixDescriptor.matrix[i];
       for (var j = 0; j < row.length; ++j) {
         if (row[j].present) {
           switches = switches ? switches.union(row[j].keySwitch) : row[j].keySwitch;
+          keyCaps = keyCaps ? keyCaps.union(row[j].cap) : row[j].cap;
         }
       }
     }
     matrixDescriptor.switches = switches.translate([0, 0, -switches.getBounds()[0].z]);
+    matrixDescriptor.keyCaps = keyCaps.translate([0, 0, -switches.getBounds()[0].z + matrixDescriptor.switches.getBounds()[1].z]);
   }
 
   // Connect thumb switch plate to thumb matrix.
@@ -306,7 +336,7 @@ function switchPlateLeftHand() {
   // when adjusting the other plate derivatives.
   // While the space is at a different Z coordinate, the two connectors
   // used have identical Z coordinates, so the transformation is sound.
-  var thumbPlateProperties = ["cutout", "switches", "plate"];
+  var thumbPlateProperties = ["cutout", "switches", "keyCaps", "plate"];
   for (var i = 0; i < thumbPlateProperties.length; ++i) {
     var property = thumbPlateProperties[i];
     thumbMatrixDescriptor[property] = thumbMatrixDescriptor[property].connectTo(
@@ -377,8 +407,13 @@ function switchPlateLeftHand() {
 
   fullSpacer = fullSpacer.subtract(hdmiCutout).subtract(usbCutout);
   var switchPlate = fullPlate.subtract(primaryMatrixDescriptor.switches.union(thumbMatrixDescriptor.switches));
+  var keyCaps = primaryMatrixDescriptor.keyCaps.union(thumbMatrixDescriptor.keyCaps);
 
-  return switchPlate.translate([0, 0, fullSpacer.getBounds()[1].z]).union(fullSpacer);
+  var result = switchPlate.translate([0, 0, fullSpacer.getBounds()[1].z]).union(fullSpacer)
+  if (INCLUDE_KEY_CAPS_FOR_DEBUGGING) {
+    result = result.union(keyCaps);
+  }
+  return result;
 }
 
 function main() {
