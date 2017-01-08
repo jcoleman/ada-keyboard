@@ -85,15 +85,20 @@ function buildUnconnectedSwitchDescriptorMatrix(opts={placementMatrix: [[]], col
       };
 
       var baseX = col * SWITCH_CENTER_X_SPACING;
+      var rowOffset = rowOffsets[row] || 0;
+      var colOffset = columnOffsets[col] || 0;
+      if (rowOffset != 0 && colOffset != 0) {
+        throw new Error("Having row offsets and column offsets simultaneously is not supported because it will cause key cap overlap.");
+      }
       if (col > 0) {
         // Connect switch to previous switch in row.
         result.parentSwitchLocation = [row, col - 1];
-        var point = [-SWITCH_CENTER_X_SPACING, -columnOffsets[col] || 0, 0];
+        var point = [-SWITCH_CENTER_X_SPACING, -colOffset, 0];
         result.parentConnector = new CSG.Connector(point, [0, 0, 1], [0, 1, 0]);
       } else if (row > 0) {
         // Connect switch to first switch in previous row.
         result.parentSwitchLocation = [row - 1, col];
-        var point = [baseX - (rowOffsets[row] || 0), SWITCH_CENTER_Y_SPACING, 0];
+        var point = [baseX - rowOffset, SWITCH_CENTER_Y_SPACING, 0];
         result.parentConnector = new CSG.Connector(point, [0, 0, 1], [0, 1, 0]);
       } else {
         // Switch at [0, 0] will be connected later.
@@ -233,7 +238,7 @@ function switchPlateLeftHand() {
       [1, 1],
       [1, 1],
     ],
-    columnOffsets: [0, -2],
+    columnOffsets: [],
     rowOffsets: [0, 6],
   });
 
