@@ -358,22 +358,12 @@ function switchPlateLeftHand() {
       break;
     }
   }
-  var usbCutoutPlateTopRiserVertex0 = new CAG.Vertex(new CSG.Vector2D([usbCutoutPlateTopSide.vertex1.pos.x, usbCutoutPlateTopSide.vertex0.pos.y]));
-  var usbCutoutPlateTopRiser = new CAG.Side(
-    usbCutoutPlateTopRiserVertex0,
-    usbCutoutPlateTopSide.vertex1
-  );
   var usbCutoutAngle = Math.asin(
-    usbCutoutPlateTopRiser.length() / usbCutoutPlateTopSide.length()
+    (usbCutoutPlateTopSide.vertex0.pos.y - usbCutoutPlateTopSide.vertex1.pos.y) / usbCutoutPlateTopSide.length()
   ) * (180 / Math.PI);
-  var usbCutoutCenterPlateX = primaryMatrix[0][1].keySwitch.getBoundsCenter().x;
-  var usbCutoutCenterPlateY = primaryMatrixDescriptor.plate.getBounds()[1].y - (
-    usbCutoutPlateTopRiser.length() * (
-      (usbCutoutPlateTopSide.vertex0.pos.x - usbCutoutCenterPlateX) / (usbCutoutPlateTopSide.vertex0.pos.x - usbCutoutPlateTopSide.vertex1.pos.x)
-    )
-  );
+  var usbCutoutTopSide3D = CSG.Line3D.fromPoints(usbCutoutPlateTopSide.vertex0.pos.toVector3D(0), usbCutoutPlateTopSide.vertex1.pos.toVector3D(0));
   fullSpacer.properties.usbCutoutConnector = new CSG.Connector(
-    [usbCutoutCenterPlateX, usbCutoutCenterPlateY, 0],
+    usbCutoutTopSide3D.closestPointOnLine(primaryMatrix[0][1].keySwitch.getBoundsCenter()),
     [0, 0, 1],
     [0, 1, 0]
   );
