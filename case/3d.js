@@ -225,6 +225,7 @@ function switchPlateLeftHand() {
   var exteriorHullSwitchRadius = 10;
   var interiorHullSwitchRadius = 3;
   var primaryExteriorHullOffsets = {bottom: -25, top: 5};
+  var primaryInteriorHullOffsets = {bottom: -20};
 
   var primaryExteriorHull = hullForMatrix(primaryMatrix, {radius: exteriorHullSwitchRadius, offset: primaryExteriorHullOffsets});
   var primaryExteriorBounds = primaryExteriorHull.getBounds();
@@ -237,7 +238,7 @@ function switchPlateLeftHand() {
       break;
     }
   }
-  var primaryInteriorHull = hullForMatrix(primaryMatrix, {radius: interiorHullSwitchRadius});
+  var primaryInteriorHull = hullForMatrix(primaryMatrix, {radius: interiorHullSwitchRadius, offset: primaryInteriorHullOffsets});
   var primaryInteriorBounds = primaryInteriorHull.getBounds();
   for (var i = 0; i < primaryInteriorHull.sides.length; ++i) {
     var side = primaryInteriorHull.sides[i];
