@@ -10,10 +10,22 @@ var SWITCH_CENTER_X_SPACING = 19;
 function getParameterDefinitions() {
   return [
     {
+      name: "center",
+      type: "checkbox",
+      checked: "checked",
+      caption: "Center the result",
+    },
+    {
       name: "displayKeyCapsForDebugging",
       type: "checkbox",
       checked: "",
       caption: "Display key caps to debug for overlapping caps",
+    },
+    {
+      name: "displayDebuggingCoordinateLabels",
+      type: "checkbox",
+      checked: "",
+      caption: "Display +/- X/Y coordinate labels for debugging purposes",
     },
   ];
 }
@@ -441,6 +453,28 @@ function main(params) {
     plateParams[plateParamNames[i]] = params[plateParamNames[i]];
   }
 
-  return switchPlateLeftHand(plateParams);
+  var result = switchPlateLeftHand(plateParams);
+
+  if (params.center) {
+    result = result.center('x', 'y');
+  }
+
+  if (params.displayDebuggingCoordinateLabels) {
+    var textVectors = [
+      vector_text(-130, 0, "-x"),
+      vector_text(0, -100, "-y"),
+      vector_text(90, 0, "x"),
+      vector_text(0, 100, "y"),
+    ];
+    for (var h = 0; h < textVectors.length; ++h) {
+      for (var i = 0; i < textVectors[h].length; ++i) {
+        result = result.union(
+          rectangular_extrude(textVectors[h][i], {w: 2, h: 1})
+        )
+      }
+    }
+  }
+
+  return result;
 }
 
