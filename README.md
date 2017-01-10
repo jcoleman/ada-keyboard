@@ -2,6 +2,13 @@
 Columnar and column-staggered split mechanical keyboard with sane thumb clusters
 
 
+Toolchain
+---
+
+A keyboard shell is being modeling using [OpenJSCAD](http://openjscad.org) ([User Guide](https://en.wikibooks.org/wiki/OpenJSCAD_User_Guide)).
+
+You can [view the current 3D model in the OpenJSCAD viewer](http://openjscad.org#https://raw.githubusercontent.com/jcoleman/ada-keyboard/master/case/3d.js).
+
 History
 ---
 
