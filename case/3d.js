@@ -7,7 +7,16 @@ var SWITCH_NOTCH_DEPTH = 0.8128;
 var SWITCH_CENTER_Y_SPACING = 19;
 var SWITCH_CENTER_X_SPACING = 19;
 
-var INCLUDE_KEY_CAPS_FOR_DEBUGGING = true;
+function getParameterDefinitions() {
+  return [
+    {
+      name: "displayKeyCapsForDebugging",
+      type: "checkbox",
+      checked: "",
+      caption: "Display key caps to debug for overlapping caps",
+    },
+  ];
+}
 
 function installLibraryExtensions() {
   CSG.prototype.getBoundsCenter = function() {
@@ -220,7 +229,7 @@ function hullForMatrix(matrix, opts={radius: 0, offset: {}}) {
   return hull(borderSquares);
 }
 
-function switchPlateLeftHand() {
+function switchPlateLeftHand(opts={}) {
   var primaryMatrix = buildUnconnectedSwitchDescriptorMatrix({
     placementMatrix: [
       [1, 1, 1, 1, 1, 1],
@@ -415,14 +424,23 @@ function switchPlateLeftHand() {
   var keyCaps = primaryMatrixDescriptor.keyCaps.union(thumbMatrixDescriptor.keyCaps);
 
   var result = switchPlate.translate([0, 0, fullSpacer.getBounds()[1].z]).union(fullSpacer)
-  if (INCLUDE_KEY_CAPS_FOR_DEBUGGING) {
+  if (opts.displayKeyCapsForDebugging) {
     result = result.union(keyCaps);
   }
   return result;
 }
 
-function main() {
+function main(params) {
   installLibraryExtensions();
-  return switchPlateLeftHand();
+
+  var plateParams = {};
+  var plateParamNames = [
+    "displayKeyCapsForDebugging",
+  ];
+  for (var i = 0; i < plateParamNames.length; ++i) {
+    plateParams[plateParamNames[i]] = params[plateParamNames[i]];
+  }
+
+  return switchPlateLeftHand(plateParams);
 }
 
