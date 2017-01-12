@@ -10,6 +10,14 @@ var SWITCH_CENTER_X_SPACING = 19;
 function getParameterDefinitions() {
   return [
     {
+      name: "hand",
+      type: "choice",
+      values: ["left", "right"],
+      captions: ["Left hand", "Right hand"],
+      caption: "Half to render",
+      initial: "left",
+    },
+    {
       name: "center",
       type: "checkbox",
       checked: "checked",
@@ -475,6 +483,10 @@ function main(params) {
   }
 
   var result = switchPlateLeftHand(plateParams);
+
+  if (params.hand == "right") {
+    result = result.mirroredX();
+  }
 
   if (params.center) {
     result = result.center('x', 'y');
