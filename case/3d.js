@@ -16,6 +16,18 @@ function getParameterDefinitions() {
       caption: "Center the result",
     },
     {
+      name: "addCutoutForHDMIConnector",
+      type: "checkbox",
+      checked: "checked",
+      caption: "Add cutout for the HDMI connector (to connect the other half)",
+    },
+    {
+      name: "addCutoutForUSBConnector",
+      type: "checkbox",
+      checked: "checked",
+      caption: "Add cutout for the USB connector",
+    },
+    {
       name: "displayKeyCapsForDebugging",
       type: "checkbox",
       checked: "",
@@ -378,60 +390,67 @@ function switchPlateLeftHand(opts={}) {
   var fullSpacer = fullPlate.subtract(fullInteriorCutout).scale([1, 1, 2]);
   fullSpacer = fullSpacer.translate([0, 0, -fullSpacer.getBounds()[0].z]);
 
-  // Add cutouts for HDMI connector.
   var spacerHeight = fullSpacer.getBounds()[1].z - fullSpacer.getBounds()[0].z;
   var hullSwitchRadiusDifferential = exteriorHullSwitchRadius - interiorHullSwitchRadius;
-  var hdmiCutout = CSG.cube({radius: [15.4/2, (hullSwitchRadiusDifferential + primaryExteriorHullOffsets.top) / 2, spacerHeight / 2]});
-  hdmiCutout = hdmiCutout.translate([0, 0, -hdmiCutout.getBounds()[0].z]);
-  hdmiCutout.properties.topRightConnector = new CSG.Connector(
-    [hdmiCutout.getBounds()[1].x, hdmiCutout.getBounds()[1].y, 0],
-    [0, 0, 1],
-    [0, 1, 0]
-  );
-  fullSpacer.properties.hdmiCutoutConnector = new CSG.Connector(
-    [primaryMatrixDescriptor.plate.getBounds()[1].x - hullSwitchRadiusDifferential, primaryMatrixDescriptor.plate.getBounds()[1].y, 0],
-    [0, 0, 1],
-    [0, 1, 0]
-  );
-  hdmiCutout = hdmiCutout.connectTo(
-    hdmiCutout.properties.topRightConnector,
-    fullSpacer.properties.hdmiCutoutConnector,
-    false,
-    0
-  );
 
-  var usbCutout = CSG.cube({radius: [8.1/2, (hullSwitchRadiusDifferential + primaryExteriorHullOffsets.top + 1.5) / 2, spacerHeight / 2]});
-  usbCutout = usbCutout.translate([0, 0, -usbCutout.getBounds()[0].z]);
-  usbCutout.properties.topCenterConnector = new CSG.Connector(
-    [0, usbCutout.getBounds()[1].y, 0],
-    [0, 0, 1],
-    [0, 1, 0]
-  );
-  var usbCutoutPlateTopSide = null;
-  for (var i = 0; i < primaryExteriorHull.sides.length; ++i) {
-    var side = primaryExteriorHull.sides[i];
-    if (side.vertex0.pos.x == primaryExteriorBounds[0].x && side.vertex1.pos.x == primaryExteriorBounds[0].x) {
-      usbCutoutPlateTopSide = primaryExteriorHull.sides[i - 1];
-      break;
-    }
+  if (opts.addCutoutForHDMIConnector) {
+    var hdmiCutout = CSG.cube({radius: [15.4/2, (hullSwitchRadiusDifferential + primaryExteriorHullOffsets.top) / 2, spacerHeight / 2]});
+    hdmiCutout = hdmiCutout.translate([0, 0, -hdmiCutout.getBounds()[0].z]);
+    hdmiCutout.properties.topRightConnector = new CSG.Connector(
+      [hdmiCutout.getBounds()[1].x, hdmiCutout.getBounds()[1].y, 0],
+      [0, 0, 1],
+      [0, 1, 0]
+    );
+    fullSpacer.properties.hdmiCutoutConnector = new CSG.Connector(
+      [primaryMatrixDescriptor.plate.getBounds()[1].x - hullSwitchRadiusDifferential, primaryMatrixDescriptor.plate.getBounds()[1].y, 0],
+      [0, 0, 1],
+      [0, 1, 0]
+    );
+    hdmiCutout = hdmiCutout.connectTo(
+      hdmiCutout.properties.topRightConnector,
+      fullSpacer.properties.hdmiCutoutConnector,
+      false,
+      0
+    );
+
+    fullSpacer = fullSpacer.subtract(hdmiCutout);
   }
-  var usbCutoutAngle = Math.asin(
-    (usbCutoutPlateTopSide.vertex0.pos.y - usbCutoutPlateTopSide.vertex1.pos.y) / usbCutoutPlateTopSide.length()
-  ) * (180 / Math.PI);
-  var usbCutoutTopSide3D = CSG.Line3D.fromPoints(usbCutoutPlateTopSide.vertex0.pos.toVector3D(0), usbCutoutPlateTopSide.vertex1.pos.toVector3D(0));
-  fullSpacer.properties.usbCutoutConnector = new CSG.Connector(
-    usbCutoutTopSide3D.closestPointOnLine(primaryMatrix[0][1].keySwitch.getBoundsCenter()),
-    [0, 0, 1],
-    [0, 1, 0]
-  );
-  usbCutout = usbCutout.connectTo(
-    usbCutout.properties.topCenterConnector,
-    fullSpacer.properties.usbCutoutConnector,
-    false,
-    usbCutoutAngle
-  );
 
-  fullSpacer = fullSpacer.subtract(hdmiCutout).subtract(usbCutout);
+  if (opts.addCutoutForUSBConnector) {
+    var usbCutout = CSG.cube({radius: [8.1/2, (hullSwitchRadiusDifferential + primaryExteriorHullOffsets.top + 1.5) / 2, spacerHeight / 2]});
+    usbCutout = usbCutout.translate([0, 0, -usbCutout.getBounds()[0].z]);
+    usbCutout.properties.topCenterConnector = new CSG.Connector(
+      [0, usbCutout.getBounds()[1].y, 0],
+      [0, 0, 1],
+      [0, 1, 0]
+    );
+    var usbCutoutPlateTopSide = null;
+    for (var i = 0; i < primaryExteriorHull.sides.length; ++i) {
+      var side = primaryExteriorHull.sides[i];
+      if (side.vertex0.pos.x == primaryExteriorBounds[0].x && side.vertex1.pos.x == primaryExteriorBounds[0].x) {
+        usbCutoutPlateTopSide = primaryExteriorHull.sides[i - 1];
+        break;
+      }
+    }
+    var usbCutoutAngle = Math.asin(
+      (usbCutoutPlateTopSide.vertex0.pos.y - usbCutoutPlateTopSide.vertex1.pos.y) / usbCutoutPlateTopSide.length()
+    ) * (180 / Math.PI);
+    var usbCutoutTopSide3D = CSG.Line3D.fromPoints(usbCutoutPlateTopSide.vertex0.pos.toVector3D(0), usbCutoutPlateTopSide.vertex1.pos.toVector3D(0));
+    fullSpacer.properties.usbCutoutConnector = new CSG.Connector(
+      usbCutoutTopSide3D.closestPointOnLine(primaryMatrix[0][1].keySwitch.getBoundsCenter()),
+      [0, 0, 1],
+      [0, 1, 0]
+    );
+    usbCutout = usbCutout.connectTo(
+      usbCutout.properties.topCenterConnector,
+      fullSpacer.properties.usbCutoutConnector,
+      false,
+      usbCutoutAngle
+    );
+
+    fullSpacer = fullSpacer.subtract(usbCutout);
+  }
+
   var switchPlate = fullPlate.subtract(primaryMatrixDescriptor.switches.union(thumbMatrixDescriptor.switches));
   var keyCaps = primaryMatrixDescriptor.keyCaps.union(thumbMatrixDescriptor.keyCaps);
 
@@ -448,6 +467,8 @@ function main(params) {
   var plateParams = {};
   var plateParamNames = [
     "displayKeyCapsForDebugging",
+    "addCutoutForHDMIConnector",
+    "addCutoutForUSBConnector",
   ];
   for (var i = 0; i < plateParamNames.length; ++i) {
     plateParams[plateParamNames[i]] = params[plateParamNames[i]];
