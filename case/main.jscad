@@ -63,6 +63,14 @@ function switchPlateLeftHand(opts={}) {
     ],
     columnOffsets: [0, -4, 14, 5, -6, -5],
     rowOffsets: [],
+    caseBaseRadiiFromSwitchCenters: {
+      interior: 3,
+      exterior: 10,
+    },
+    caseAdditionalRadiiOffsets: {
+      exterior: {bottom: -25, top: 5},
+      interior: {bottom: -20},
+    },
   });
 
   var thumbMatrix = new SwitchMatrix({
@@ -72,6 +80,10 @@ function switchPlateLeftHand(opts={}) {
     ],
     columnOffsets: [],
     rowOffsets: [0, 6],
+    caseBaseRadiiFromSwitchCenters: {
+      interior: 3,
+      exterior: 10,
+    },
   });
 
   // Layout initial relative switch positions for primary matrix (required for hull calculation).
@@ -86,12 +98,7 @@ function switchPlateLeftHand(opts={}) {
   // Layout initial relative switch positions for thumb matrix (required for hull calculation).
   thumbMatrix.connectSwitches({center: true});
 
-  var exteriorHullSwitchRadius = 10;
-  var interiorHullSwitchRadius = 3;
-  var primaryExteriorHullOffsets = {bottom: -25, top: 5};
-  var primaryInteriorHullOffsets = {bottom: -20};
-
-  var primaryExteriorHull = primaryMatrix.hull({radius: exteriorHullSwitchRadius, offset: primaryExteriorHullOffsets});
+  var primaryExteriorHull = primaryMatrix.exteriorHull();
   var primaryExteriorBounds = primaryExteriorHull.getBounds();
   for (var i = 0; i < primaryExteriorHull.sides.length; ++i) {
     var side = primaryExteriorHull.sides[i];
@@ -102,7 +109,7 @@ function switchPlateLeftHand(opts={}) {
       break;
     }
   }
-  var primaryInteriorHull = primaryMatrix.hull({radius: interiorHullSwitchRadius, offset: primaryInteriorHullOffsets});
+  var primaryInteriorHull = primaryMatrix.interiorHull();
   var primaryInteriorBounds = primaryInteriorHull.getBounds();
   for (var i = 0; i < primaryInteriorHull.sides.length; ++i) {
     var side = primaryInteriorHull.sides[i];
@@ -116,8 +123,8 @@ function switchPlateLeftHand(opts={}) {
   var primaryPlate = linear_extrude({height: SWITCH_PLATE_THICKNESS}, primaryExteriorHull);
   var primaryInteriorCutout = linear_extrude({height: SWITCH_PLATE_THICKNESS}, primaryInteriorHull);
 
-  var thumbExteriorHull = thumbMatrix.hull({radius: exteriorHullSwitchRadius});
-  var thumbInteriorHull = thumbMatrix.hull({radius: interiorHullSwitchRadius});
+  var thumbExteriorHull = thumbMatrix.exteriorHull();
+  var thumbInteriorHull = thumbMatrix.interiorHull();
   var thumbPlate = linear_extrude({height: SWITCH_PLATE_THICKNESS}, thumbExteriorHull);
   var thumbInteriorCutout = linear_extrude({height: SWITCH_PLATE_THICKNESS}, thumbInteriorHull);
 
@@ -190,10 +197,10 @@ function switchPlateLeftHand(opts={}) {
   fullSpacer = fullSpacer.translate([0, 0, -fullSpacer.getBounds()[0].z]);
 
   var spacerHeight = fullSpacer.getBounds()[1].z - fullSpacer.getBounds()[0].z;
-  var hullSwitchRadiusDifferential = exteriorHullSwitchRadius - interiorHullSwitchRadius;
+  var hullSwitchRadiusDifferential = primaryMatrix.spacerDepth;
 
   if (opts.addCutoutForHDMIConnector) {
-    var hdmiCutout = CSG.cube({radius: [15.4/2, (hullSwitchRadiusDifferential + primaryExteriorHullOffsets.top) / 2, spacerHeight / 2]});
+    var hdmiCutout = CSG.cube({radius: [15.4/2, (hullSwitchRadiusDifferential + primaryMatrix.caseAdditionalRadiiOffsets.exterior.top) / 2, spacerHeight / 2]});
     hdmiCutout = hdmiCutout.translate([0, 0, -hdmiCutout.getBounds()[0].z]);
     hdmiCutout.properties.topRightConnector = new CSG.Connector(
       [hdmiCutout.getBounds()[1].x, hdmiCutout.getBounds()[1].y, 0],
@@ -216,7 +223,7 @@ function switchPlateLeftHand(opts={}) {
   }
 
   if (opts.addCutoutForUSBConnector) {
-    var usbCutout = CSG.cube({radius: [8.1/2, (hullSwitchRadiusDifferential + primaryExteriorHullOffsets.top + 1.5) / 2, spacerHeight / 2]});
+    var usbCutout = CSG.cube({radius: [8.1/2, (hullSwitchRadiusDifferential + primaryMatrix.caseAdditionalRadiiOffsets.exterior.top + 1.5) / 2, spacerHeight / 2]});
     usbCutout = usbCutout.translate([0, 0, -usbCutout.getBounds()[0].z]);
     usbCutout.properties.topCenterConnector = new CSG.Connector(
       [0, usbCutout.getBounds()[1].y, 0],

@@ -6,10 +6,18 @@ class _SwitchMatrix {
   // but contain the information to be connected.
   // The first switch (at coordinates[0, 0]) will not have connecting
   // information.
-  constructor(opts={placementMatrix: [[]], columnOffsets: [], rowOffsets: []}) {
+  constructor(opts={
+    placementMatrix: [[]],
+    columnOffsets: [],
+    rowOffsets: [],
+    caseBaseRadiiFromSwitchCenters: {}, // E.g., {interior: 5, exterior, 10}
+    caseAdditionalRadiiOffsets: {}, // E.g., {exterior: {bottom: -25, top: 5}}
+  }) {
     this.placementMatrix = opts.placementMatrix;
     this.columnOffsets = opts.columnOffsets;
     this.rowOffsets = opts.rowOffsets;
+    this.caseBaseRadiiFromSwitchCenters = opts.caseBaseRadiiFromSwitchCenters;
+    this.caseAdditionalRadiiOffsets = opts.caseAdditionalRadiiOffsets || {};
     this.matrix = [];
 
     for (var row = 0; row < this.placementMatrix.length; ++row) {
@@ -50,6 +58,10 @@ class _SwitchMatrix {
         this.matrix[row].push(result);
       }
     }
+  }
+
+  get spacerDepth() {
+   return this.caseBaseRadiiFromSwitchCenters.exterior - this.caseBaseRadiiFromSwitchCenters.interior;
   }
 
   // Add connections between the switches in an unconnected
@@ -100,7 +112,21 @@ class _SwitchMatrix {
     }
   }
 
-  hull(opts={radius: 0, offset: {}}) {
+  exteriorHull() {
+    return this._hull({
+      radius: this.caseBaseRadiiFromSwitchCenters.exterior,
+      offset: this.caseAdditionalRadiiOffsets.exterior,
+    });
+  }
+
+  interiorHull() {
+    return this._hull({
+      radius: this.caseBaseRadiiFromSwitchCenters.interior,
+      offset: this.caseAdditionalRadiiOffsets.interior,
+    });
+  }
+
+  _hull(opts={radius: 0, offset: {}}) {
     var radius = opts.radius || 0;
     var offset = opts.offset || {};
 
