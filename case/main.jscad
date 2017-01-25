@@ -98,28 +98,8 @@ function switchPlateLeftHand(opts={}) {
   // Layout initial relative switch positions for thumb matrix (required for hull calculation).
   thumbMatrix.connectSwitches({center: true});
 
-  var primaryExteriorHull = primaryMatrix.exteriorHull();
-  var primaryExteriorBounds = primaryExteriorHull.getBounds();
-  for (var i = 0; i < primaryExteriorHull.sides.length; ++i) {
-    var side = primaryExteriorHull.sides[i];
-    if (side.vertex0.pos.x == primaryExteriorBounds[1].x && side.vertex1.pos.x == primaryExteriorBounds[1].x) {
-      side.vertex1.pos = new CSG.Vector2D(side.vertex1.pos.x, primaryExteriorBounds[1].y);
-      var side2 = primaryExteriorHull.sides[i + 1];
-      side2.vertex0.pos = new CSG.Vector2D(side2.vertex0.pos.x, primaryExteriorBounds[1].y);
-      break;
-    }
-  }
-  var primaryInteriorHull = primaryMatrix.interiorHull();
-  var primaryInteriorBounds = primaryInteriorHull.getBounds();
-  for (var i = 0; i < primaryInteriorHull.sides.length; ++i) {
-    var side = primaryInteriorHull.sides[i];
-    if (side.vertex0.pos.x == primaryInteriorBounds[1].x && side.vertex1.pos.x == primaryInteriorBounds[1].x) {
-      side.vertex1.pos = new CSG.Vector2D(side.vertex1.pos.x, primaryInteriorBounds[1].y);
-      var side2 = primaryInteriorHull.sides[i + 1];
-      side2.vertex0.pos = new CSG.Vector2D(side2.vertex0.pos.x, primaryInteriorBounds[1].y);
-      break;
-    }
-  }
+  var primaryExteriorHull = primaryMatrix.exteriorHull({squareTopRightCorner: true});
+  var primaryInteriorHull = primaryMatrix.interiorHull({squareTopRightCorner: true});
   var primaryPlate = linear_extrude({height: SWITCH_PLATE_THICKNESS}, primaryExteriorHull);
   var primaryInteriorCutout = linear_extrude({height: SWITCH_PLATE_THICKNESS}, primaryInteriorHull);
 
@@ -231,6 +211,7 @@ function switchPlateLeftHand(opts={}) {
       [0, 1, 0]
     );
     var usbCutoutPlateTopSide = null;
+    var primaryExteriorBounds = primaryExteriorHull.getBounds();
     for (var i = 0; i < primaryExteriorHull.sides.length; ++i) {
       var side = primaryExteriorHull.sides[i];
       if (side.vertex0.pos.x == primaryExteriorBounds[0].x && side.vertex1.pos.x == primaryExteriorBounds[0].x) {

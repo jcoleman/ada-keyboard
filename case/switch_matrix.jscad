@@ -112,23 +112,26 @@ class _SwitchMatrix {
     }
   }
 
-  exteriorHull() {
+  exteriorHull(opts={squareTopRightCorner: false}) {
     return this._hull({
       radius: this.caseBaseRadiiFromSwitchCenters.exterior,
       offset: this.caseAdditionalRadiiOffsets.exterior,
+      squareTopRightCorner: opts.squareTopRightCorner,
     });
   }
 
-  interiorHull() {
+  interiorHull(opts={squareTopRightCorner: false}) {
     return this._hull({
       radius: this.caseBaseRadiiFromSwitchCenters.interior,
       offset: this.caseAdditionalRadiiOffsets.interior,
+      squareTopRightCorner: opts.squareTopRightCorner,
     });
   }
 
-  _hull(opts={radius: 0, offset: {}}) {
+  _hull(opts={radius: 0, offset: {}, squareTopRightCorner: false}) {
     var radius = opts.radius || 0;
     var offset = opts.offset || {};
+    var squareTopRightCorner = opts.squareTopRightCorner;
 
     var topRow = [];
     for (var col = 0; col < this.matrix[0].length; ++col) {
@@ -182,7 +185,22 @@ class _SwitchMatrix {
       }
     }
 
-    return hull(borderSquares);
+    var calculatedHull = hull(borderSquares);
+
+    if (squareTopRightCorner) {
+      var hullBounds = calculatedHull.getBounds();
+      for (var i = 0; i < calculatedHull.sides.length; ++i) {
+        var side = calculatedHull.sides[i];
+        if (side.vertex0.pos.x == hullBounds[1].x && side.vertex1.pos.x == hullBounds[1].x) {
+          side.vertex1.pos = new CSG.Vector2D(side.vertex1.pos.x, hullBounds[1].y);
+          var side2 = calculatedHull.sides[i + 1];
+          side2.vertex0.pos = new CSG.Vector2D(side2.vertex0.pos.x, hullBounds[1].y);
+          break;
+        }
+      }
+    }
+
+    return calculatedHull;
   }
 }
 
