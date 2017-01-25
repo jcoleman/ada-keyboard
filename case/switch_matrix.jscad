@@ -12,12 +12,14 @@ class _SwitchMatrix {
     rowOffsets: [],
     caseBaseRadiiFromSwitchCenters: {}, // E.g., {interior: 5, exterior, 10}
     caseAdditionalRadiiOffsets: {}, // E.g., {exterior: {bottom: -25, top: 5}}
+    squareTopRightCorner: false,
   }) {
     this.placementMatrix = opts.placementMatrix;
     this.columnOffsets = opts.columnOffsets;
     this.rowOffsets = opts.rowOffsets;
     this.caseBaseRadiiFromSwitchCenters = opts.caseBaseRadiiFromSwitchCenters;
     this.caseAdditionalRadiiOffsets = opts.caseAdditionalRadiiOffsets || {};
+    this.squareTopRightCorner = opts.squareTopRightCorner;
     this.matrix = [];
 
     for (var row = 0; row < this.placementMatrix.length; ++row) {
@@ -112,19 +114,19 @@ class _SwitchMatrix {
     }
   }
 
-  exteriorHull(opts={squareTopRightCorner: false}) {
+  exteriorHull() {
     return this._hull({
       radius: this.caseBaseRadiiFromSwitchCenters.exterior,
       offset: this.caseAdditionalRadiiOffsets.exterior,
-      squareTopRightCorner: opts.squareTopRightCorner,
+      squareTopRightCorner: this.squareTopRightCorner,
     });
   }
 
-  interiorHull(opts={squareTopRightCorner: false}) {
+  interiorHull() {
     return this._hull({
       radius: this.caseBaseRadiiFromSwitchCenters.interior,
       offset: this.caseAdditionalRadiiOffsets.interior,
-      squareTopRightCorner: opts.squareTopRightCorner,
+      squareTopRightCorner: this.squareTopRightCorner,
     });
   }
 
@@ -201,6 +203,14 @@ class _SwitchMatrix {
     }
 
     return calculatedHull;
+  }
+
+  plate() {
+    return linear_extrude({height: SWITCH_PLATE_THICKNESS}, this.exteriorHull());
+  }
+
+  cutout() {
+    return linear_extrude({height: SWITCH_PLATE_THICKNESS}, this.interiorHull());
   }
 }
 

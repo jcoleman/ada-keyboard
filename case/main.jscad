@@ -71,6 +71,7 @@ function switchPlateLeftHand(opts={}) {
       exterior: {bottom: -25, top: 5},
       interior: {bottom: -20},
     },
+    squareTopRightCorner: true,
   });
 
   var thumbMatrix = new SwitchMatrix({
@@ -98,15 +99,15 @@ function switchPlateLeftHand(opts={}) {
   // Layout initial relative switch positions for thumb matrix (required for hull calculation).
   thumbMatrix.connectSwitches({center: true});
 
-  var primaryExteriorHull = primaryMatrix.exteriorHull({squareTopRightCorner: true});
-  var primaryInteriorHull = primaryMatrix.interiorHull({squareTopRightCorner: true});
-  var primaryPlate = linear_extrude({height: SWITCH_PLATE_THICKNESS}, primaryExteriorHull);
-  var primaryInteriorCutout = linear_extrude({height: SWITCH_PLATE_THICKNESS}, primaryInteriorHull);
+  var primaryExteriorHull = primaryMatrix.exteriorHull();
+  var primaryInteriorHull = primaryMatrix.interiorHull();
+  var primaryPlate = primaryMatrix.plate();
+  var primaryInteriorCutout = primaryMatrix.cutout();
 
   var thumbExteriorHull = thumbMatrix.exteriorHull();
   var thumbInteriorHull = thumbMatrix.interiorHull();
-  var thumbPlate = linear_extrude({height: SWITCH_PLATE_THICKNESS}, thumbExteriorHull);
-  var thumbInteriorCutout = linear_extrude({height: SWITCH_PLATE_THICKNESS}, thumbInteriorHull);
+  var thumbPlate = thumbMatrix.plate();
+  var thumbInteriorCutout = thumbMatrix.cutout();
 
   // Connect primary matrix to primary switch plate.
   primaryMatrix.matrix[0][0].parentObject = primaryPlate;
