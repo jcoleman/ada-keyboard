@@ -1,5 +1,6 @@
 include("constants.jscad");
 include("switch.jscad");
+include("csg_dependency_graph.jscad");
 
 class _SwitchMatrix {
   // Builds a matrix of key switch descriptors that are unconnected
@@ -20,6 +21,7 @@ class _SwitchMatrix {
     this.caseBaseRadiiFromSwitchCenters = opts.caseBaseRadiiFromSwitchCenters;
     this.caseAdditionalRadiiOffsets = opts.caseAdditionalRadiiOffsets || {};
     this.squareTopRightCorner = opts.squareTopRightCorner;
+    this.csgDependencyTree = new CSGDependencyGraph();
     this.matrix = [];
 
     for (var row = 0; row < this.placementMatrix.length; ++row) {
@@ -28,12 +30,19 @@ class _SwitchMatrix {
       this.matrix.push([]);
       for (var col = 0; col < this.placementMatrix[row].length; ++col) {
         var result = {
-          keySwitch: switchHole(),
-          cap: keyCap(),
-          parentSwitchLocation: null,
+          keySwitch: this.csgDependencyTree.nodeFor(switchHole()),
+          cap: this.csgDependencyTree.nodeFor(keyCap()),
           parentConnector: null,
-          ownLocation: [row, col],
         };
+
+        result.keySwitch.name = "key" + String(row) + "x" + String(col);
+        result.cap.name = "cap" + String(row) + "x" + String(col);
+        this.csgDependencyTree.addConnection("keySwitchCapAt" + String(row) + "x" + String(col), {
+          parent: [result.keySwitch, "center"],
+          child: [result.cap, "baseCenter"],
+          mirror: false,
+          rotationFromNormal: 0,
+        });
 
         var baseX = col * SWITCH_CENTER_X_SPACING;
         var rowOffset = this.rowOffsets[row] || 0;
@@ -41,18 +50,31 @@ class _SwitchMatrix {
         if (rowOffset != 0 && colOffset != 0) {
           throw new Error("Having row offsets and column offsets simultaneously is not supported because it will cause key cap overlap.");
         }
+        var parent = null;
         if (col > 0) {
           // Connect switch to previous switch in row.
-          result.parentSwitchLocation = [row, col - 1];
+          parent = this.matrix[row][col - 1];
           var point = [-SWITCH_CENTER_X_SPACING, -colOffset, 0];
           result.parentConnector = new CSG.Connector(point, [0, 0, 1], [0, 1, 0]);
         } else if (row > 0) {
           // Connect switch to first switch in previous row.
-          result.parentSwitchLocation = [row - 1, col];
+          parent = this.matrix[row - 1][col];
           var point = [baseX - rowOffset, SWITCH_CENTER_Y_SPACING, 0];
           result.parentConnector = new CSG.Connector(point, [0, 0, 1], [0, 1, 0]);
         } else {
           // Switch at [0, 0] will be connected later.
+        }
+
+        if (parent) {
+          var edgeKey = "keySwitchAt" + String(row) + "x" + String(col);
+          result.keySwitch.object.properties.parentKeySwitchCenter = result.parentConnector;
+          this.csgDependencyTree.addConnection(edgeKey, {
+            parent: [parent.keySwitch, "center"],
+            child: [result.keySwitch, "parentKeySwitchCenter"],
+            mirror: false,
+            rotationFromNormal: 0,
+          });
+          result.parentObject = parent;
         }
 
         result.present = this.placementMatrix[row][col] == 1;
@@ -73,45 +95,23 @@ class _SwitchMatrix {
   // this matrix that links it to another object since connections
   // don't cause cascading changes.
   connectSwitches(opts={center: false}) {
-    for (var row = 0; row < this.matrix.length; ++row) {
-      for (var col = 0; col < this.matrix[row].length; ++col) {
-        var descriptor = this.matrix[row][col];
-        var parentObject = null;
-        if (descriptor.parentObject) {
-          parentObject = descriptor.parentObject;
-        } else if (descriptor.parentSwitchLocation) {
-          var parentDescriptor = this.matrix;
-          for (var i = 0; i < descriptor.parentSwitchLocation.length; ++i) {
-            parentDescriptor = parentDescriptor[descriptor.parentSwitchLocation[i]];
-          }
-          parentObject = parentDescriptor.keySwitch;
-        }
-        if (parentObject) {
-          if (!descriptor.keySwitch.properties.parentSwitchCenter && descriptor.parentConnector) {
-            descriptor.keySwitch.properties.parentSwitchCenter = descriptor.parentConnector;
-          }
-          var updatedKeySwitch = descriptor.keySwitch
-          var updatedCap = descriptor.cap;
-          if (opts.center) {
-            updatedKeySwitch = updatedKeySwitch.center();
-            updatedCap = updatedCap.center();
-          }
-          updatedKeySwitch = updatedKeySwitch.connectTo(
-            descriptor.parentConnector,
-            parentObject.properties[descriptor.parentObjectConnectorName || "center"],
-            false,
-            0
-          );
-          descriptor.keySwitch = updatedKeySwitch;
-          descriptor.cap = updatedCap.connectTo(
-            updatedCap.properties.baseCenter,
-            descriptor.keySwitch.properties.center,
-            false,
-            0
-          );
-        }
+    // Special case: connection the top left switch to it's parent object (not in the tree).
+    var topLeftDescriptor = this.matrix[0][0];
+    if (topLeftDescriptor.parentObject && topLeftDescriptor.parentConnector) {
+      var node = topLeftDescriptor.keySwitch;
+      if (opts.center) {
+        node.object = node.object.center();
       }
+      var parentObject = topLeftDescriptor.parentObject;
+      node.object = node.object.connectTo(
+        topLeftDescriptor.parentConnector,
+        (parentObject instanceof CSGDependencyGraphNode ? parentObject.object : parentObject).properties[topLeftDescriptor.parentObjectConnectorName || "center"],
+        false,
+        0
+      );
     }
+
+    this.csgDependencyTree.resolve();
   }
 
   exteriorHull() {
@@ -139,7 +139,7 @@ class _SwitchMatrix {
     for (var col = 0; col < this.matrix[0].length; ++col) {
       for (var row = 0; row < this.matrix.length; ++row) {
         if (this.matrix[row][col].present) {
-          topRow.push(this.matrix[row][col].keySwitch.translate([0, offset.top || 0, 0]));
+          topRow.push(this.matrix[row][col].keySwitch.object.translate([0, offset.top || 0, 0]));
           break;
         }
       }
@@ -149,7 +149,7 @@ class _SwitchMatrix {
     for (var row = 0; row < this.matrix.length; ++row) {
       for (var col = this.matrix[row].length - 1; col >= 0; --col) {
         if (this.matrix[row][col].present) {
-          rightColumn.push(this.matrix[row][col].keySwitch.translate([offset.right || 0, 0, 0]));
+          rightColumn.push(this.matrix[row][col].keySwitch.object.translate([offset.right || 0, 0, 0]));
           break;
         }
       }
@@ -159,7 +159,7 @@ class _SwitchMatrix {
     for (var col = this.matrix[0].length - 1; col >= 0; --col) {
       for (var row = this.matrix.length - 1; row >= 0; --row) {
         if (this.matrix[row][col].present) {
-          bottomRow.push(this.matrix[row][col].keySwitch.translate([0, offset.bottom || 0, 0]));
+          bottomRow.push(this.matrix[row][col].keySwitch.object.translate([0, offset.bottom || 0, 0]));
           break;
         }
       }
@@ -169,7 +169,7 @@ class _SwitchMatrix {
     for (var row = this.matrix.length - 1; row >= 0; --row) {
       for (var col = 0; col < this.matrix[row].length; ++col) {
         if (this.matrix[row][col].present) {
-          leftColumn.push(this.matrix[row][col].keySwitch.translate([offset.left || 0, 0, 0]));
+          leftColumn.push(this.matrix[row][col].keySwitch.object.translate([offset.left || 0, 0, 0]));
           break;
         }
       }

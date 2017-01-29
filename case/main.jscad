@@ -1,5 +1,6 @@
 include("switch.jscad");
 include("switch_matrix.jscad");
+include("csg_dependency_graph.jscad");
 
 function getParameterDefinitions() {
   return [
@@ -88,7 +89,7 @@ function switchPlateLeftHand(opts={}) {
   });
 
   // Layout initial relative switch positions for primary matrix (required for hull calculation).
-  primaryMatrix.connectSwitches({center: true});
+  primaryMatrix.connectSwitches();
 
   // Set up connection from thumb matrix to primary matrix.
   var thumbMatrixParentRow = primaryMatrix.matrix[primaryMatrix.matrix.length - 2];
@@ -97,7 +98,7 @@ function switchPlateLeftHand(opts={}) {
   thumbMatrix.matrix[0][0].parentConnector = new CSG.Connector([-4, SWITCH_CENTER_Y_SPACING + 3, 0], [0, 0, 1], [0, 1, 0]);
 
   // Layout initial relative switch positions for thumb matrix (required for hull calculation).
-  thumbMatrix.connectSwitches({center: true});
+  thumbMatrix.connectSwitches();
 
   var primaryExteriorHull = primaryMatrix.exteriorHull();
   var primaryInteriorHull = primaryMatrix.interiorHull();
@@ -113,13 +114,10 @@ function switchPlateLeftHand(opts={}) {
   primaryMatrix.matrix[0][0].parentObject = primaryPlate;
   primaryMatrix.matrix[0][0].parentObjectConnectorName = "primarySwitchPlateConnector";
   primaryPlate.properties.primarySwitchPlateConnector = new CSG.Connector(
-    primaryMatrix.matrix[0][0].keySwitch.properties.center.point,
+    primaryMatrix.matrix[0][0].keySwitch.object.properties.center.point,
     [0, 0, 1],
     [0, 1, 0]
   );
-  // These two points are intentionally identical.
-  primaryMatrix.matrix[0][0].parentConnector = primaryPlate.properties.primarySwitchPlateConnector;
-  primaryMatrix.connectSwitches({center: true});
 
   // Build switch plates.
   var primaryMatrixDescriptor = {
@@ -141,8 +139,8 @@ function switchPlateLeftHand(opts={}) {
       var row = matrixDescriptor.matrix.matrix[i];
       for (var j = 0; j < row.length; ++j) {
         if (row[j].present) {
-          switches = switches ? switches.union(row[j].keySwitch) : row[j].keySwitch;
-          keyCaps = keyCaps ? keyCaps.union(row[j].cap) : row[j].cap;
+          switches = switches ? switches.union(row[j].keySwitch.object) : row[j].keySwitch.object;
+          keyCaps = keyCaps ? keyCaps.union(row[j].cap.object) : row[j].cap.object;
         }
       }
     }
@@ -153,7 +151,7 @@ function switchPlateLeftHand(opts={}) {
   // Connect thumb switch plate to thumb matrix.
   var thumbMatrixRotation = -12;
   thumbMatrixDescriptor.plate.properties.thumbMatrixConnector = new CSG.Connector(
-    thumbMatrix.matrix[0][0].keySwitch.properties.center.point,
+    thumbMatrix.matrix[0][0].keySwitch.object.properties.center.point,
     [0, 0, 1],
     [0, 1, 0]
   );
@@ -166,7 +164,7 @@ function switchPlateLeftHand(opts={}) {
     var property = thumbPlateProperties[i];
     thumbMatrixDescriptor[property] = thumbMatrixDescriptor[property].connectTo(
       thumbMatrixDescriptor.plate.properties.thumbMatrixConnector,
-      thumbMatrix.matrix[0][0].keySwitch.properties.center,
+      thumbMatrix.matrix[0][0].keySwitch.object.properties.center,
       false,
       thumbMatrixRotation
     );
@@ -225,7 +223,7 @@ function switchPlateLeftHand(opts={}) {
     ) * (180 / Math.PI);
     var usbCutoutTopSide3D = CSG.Line3D.fromPoints(usbCutoutPlateTopSide.vertex0.pos.toVector3D(0), usbCutoutPlateTopSide.vertex1.pos.toVector3D(0));
     fullSpacer.properties.usbCutoutConnector = new CSG.Connector(
-      usbCutoutTopSide3D.closestPointOnLine(primaryMatrixDescriptor.matrix.matrix[0][1].keySwitch.getBoundsCenter()),
+      usbCutoutTopSide3D.closestPointOnLine(primaryMatrixDescriptor.matrix.matrix[0][1].keySwitch.object.getBoundsCenter()),
       [0, 0, 1],
       [0, 1, 0]
     );
