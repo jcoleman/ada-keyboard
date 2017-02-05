@@ -17,7 +17,7 @@ class _CSGDependencyGraph {
     var optsErrors = ["parent", "child"].reduce(function(errors, key) {
       if (!(Array.isArray(opts[key]) && opts[key].length == 2)) {
         errors.push("Expected <" + key + "> to be an array containing [node, property connector name]");
-      } else if (!opts[key][0] instanceof CSGDependencyGraphNode) {
+      } else if (!(opts[key][0] instanceof CSGDependencyGraphNode)) {
         errors.push("Expected <" + key + "> node to be an instance of CSGDependencyGraphNode");
       } else if (opts[key][0].dependencyGraph !== self) {
         errors.push("Expected <" + key + "> node to have already been added to this instance of CSGDependencyGraph via <nodeForObject>");
@@ -41,6 +41,10 @@ class _CSGDependencyGraph {
   }
 
   nodeFor(object) {
+    if (!(object instanceof CSG)) {
+      throw new Error("Expected object to be instance of CSG.");
+    }
+
     var node = this.nodesByObject.get(object);
     if (!node) {
       node = new CSGDependencyGraphNode(this, object);
@@ -115,10 +119,24 @@ class _CSGDependencyGraphNode {
 
 class CSGDependencyGraphEdge {
   constructor(parent=[null, "propertyName"], child=[null, "propertyName"], opts={}) {
+    var self = this;
+
     this.parent = parent[0];
-    this.parentPropertyName = parent[1],
+    this.parentPropertyName = parent[1];
     this.child = child[0];
-    this.childPropertyName = child[1],
+    this.childPropertyName = child[1];
+    var errors = ["parent", "child"].reduce(function(errors, argumentName) {
+      var propertyName = self[argumentName + "PropertyName"];
+      if (typeof propertyName !== "string") {
+        errors.push("Expected <" + propertyName + "> to be a String.");
+      } else if (!self[argumentName].object.properties.hasOwnProperty(propertyName)) {
+        errors.push("Tried to add connection with " + argumentName + " property <" + propertyName + "> but parent object does not contain that property.");
+      }
+      return errors;
+    }, []);
+    if (errors.length > 0) {
+      throw new Error(errors.join(" "));
+    }
     this.options = opts;
   }
 
