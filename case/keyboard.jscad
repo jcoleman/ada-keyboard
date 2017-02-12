@@ -8,6 +8,10 @@ class _Keyboard {
     addCutoutForHDMIConnector: true,
     addCutoutForUSBConnector: true,
   }) {
+    this.displayKeyCapsForDebugging = opts.displayKeyCapsForDebugging;
+    this.addCutoutForHDMIConnector = opts.addCutoutForHDMIConnector;
+    this.addCutoutForUSBConnector = opts.addCutoutForUSBConnector;
+
     this._buildSwitchMatrices();
 
     this.csgDependencyTree = new CSGDependencyGraph();
@@ -19,7 +23,42 @@ class _Keyboard {
     var switchPlateCSG = plateCSG.subtract(switchHolesCSG);
 
     this.switchPlate = this.csgDependencyTree.nodeFor(switchPlateCSG);
+    this._addSpacer(spacerCSG);
 
+    if (this.displayKeyCapsForDebugging) {
+      this._addKeyCaps();
+    }
+
+    if (this.addCutoutForHDMIConnector) {
+      this._addCutoutForHDMIConnector();
+    }
+
+    if (this.addCutoutForUSBConnector) {
+      this._addCutoutForUSBConnector();
+    }
+  }
+
+  buildCSG() {
+    this.csgDependencyTree.resolve();
+
+    var csg = this.spacer.object.union(this.switchPlate.object);
+
+    if (this.displayKeyCapsForDebugging) {
+      csg = csg.union(this.keycaps.object);
+    }
+
+    if (this.addCutoutForHDMIConnector) {
+      csg = csg.subtract(this.hdmiCutout.object);
+    }
+
+    if (this.addCutoutForUSBConnector) {
+      csg = csg.subtract(this.usbCutout.object);
+    }
+
+    return csg;
+  }
+
+  _addSpacer(spacerCSG) {
     var spacerAnchorCenter = spacerCSG.properties["primaryMatrix-anchorSwitch"].point;
     spacerCSG.properties["switchPlate-primaryMatrix-anchorSwitch"] = new CSG.Connector(
       [spacerAnchorCenter.x, spacerAnchorCenter.y, spacerAnchorCenter.z - SWITCH_PLATE_THICKNESS],
@@ -34,8 +73,93 @@ class _Keyboard {
       mirror: false,
       rotationFromNormal: 0,
     });
+  }
 
-    this.csgDependencyTree.resolve();
+  _addKeycaps() {
+    var keycapsCSG = this.primaryMatrix.keycaps.object.union(this.thumbMatrix.keycaps.object);
+    this.keycaps = this.csgDependencyTree.nodeFor(keycapsCSG);
+
+    this.csgDependencyTree.addConnection("keycaps-to-switchPlate", {
+      parent: [this.switchPlate, "primaryMatrix-anchorSwitch"],
+      child: [this.keycaps, "keycaps-primaryMatrix-anchorSwitch"],
+      mirror: false,
+      rotationFromNormal: 0,
+    });
+  }
+
+  _addCutoutForHDMIConnector() {
+    var spacerBounds = this.spacer.object.getBounds();
+    var spacerHeight = spacerBounds[1].z - spacerBounds[0].z;
+    var depth = this.primaryMatrix.switchMatrix.spacerDepth + this.primaryMatrix.switchMatrix.caseAdditionalRadiiOffsets.exterior.top;
+    var hdmiCutoutCSG = CSG.cube({radius: [15.4/2, depth / 2, spacerHeight / 2]});
+    var hdmiCutoutBounds = hdmiCutoutCSG.getBounds();
+    hdmiCutoutCSG.properties.hdmiCutoutBottomRight = new CSG.Connector(
+      [hdmiCutoutBounds[1].x, hdmiCutoutBounds[1].y, hdmiCutoutBounds[0].z],
+      [0, 0, 1],
+      [0, 1, 0]
+    );
+    var x = this.primaryMatrix.cutout.object.getBounds()[1].x;
+    this.spacer.object.properties["spacer-hdmiCutoutBottomRight"] = new CSG.Connector(
+      [x, spacerBounds[1].y, spacerBounds[0].z],
+      [0, 0, 1],
+      [0, 1, 0]
+    );
+    this.hdmiCutout = this.csgDependencyTree.nodeFor(hdmiCutoutCSG);
+
+    this.csgDependencyTree.addConnection("hdmiCutout-to-spacer", {
+      parent: [this.spacer, "spacer-hdmiCutoutBottomRight"],
+      child: [this.hdmiCutout, "hdmiCutoutBottomRight"],
+      mirror: false,
+      rotationFromNormal: 0,
+    });
+  }
+
+  _addCutoutForUSBConnector() {
+    var spacerBounds = this.spacer.object.getBounds();
+    var spacerHeight = spacerBounds[1].z - spacerBounds[0].z;
+    var depth = this.primaryMatrix.switchMatrix.spacerDepth + this.primaryMatrix.switchMatrix.caseAdditionalRadiiOffsets.exterior.top + 1.5;
+    var usbCutoutCSG = CSG.cube({radius: [8.1/2, depth / 2, spacerHeight / 2]});
+    usbCutoutCSG = usbCutoutCSG.translate([0, 0, -usbCutoutCSG.getBounds()[0].z]);
+    var usbCutoutBounds = usbCutoutCSG.getBounds();
+    usbCutoutCSG.properties.usbCutoutBottomRight = new CSG.Connector(
+      [0, usbCutoutBounds[1].y, usbCutoutBounds[0].z],
+      [0, 0, 1],
+      [0, 1, 0]
+    );
+
+    var usbCutoutPlateTopSide = null;
+    var primaryExteriorHull = this.primaryMatrix.switchMatrix._exteriorHull;
+    var primaryExteriorBounds = primaryExteriorHull.getBounds();
+    for (var i = 0; i < primaryExteriorHull.sides.length; ++i) {
+      var side = primaryExteriorHull.sides[i];
+      if (side.vertex0.pos.x == primaryExteriorBounds[0].x && side.vertex1.pos.x == primaryExteriorBounds[0].x) {
+        usbCutoutPlateTopSide = primaryExteriorHull.sides[i - 1];
+        break;
+      }
+    }
+    var usbCutoutAngle = Math.asin(
+      (usbCutoutPlateTopSide.vertex0.pos.y - usbCutoutPlateTopSide.vertex1.pos.y) / usbCutoutPlateTopSide.length()
+    ) * (180 / Math.PI);
+    var usbCutoutTopSide3D = CSG.Line3D.fromPoints(
+      usbCutoutPlateTopSide.vertex0.pos.toVector3D(spacerBounds[0].z),
+      usbCutoutPlateTopSide.vertex1.pos.toVector3D(spacerBounds[0].z)
+    );
+
+    var parentSwitch = this.primaryMatrix.switchMatrix.matrix[0][1].keySwitch.object;
+    this.spacer.object.properties["spacer-usbCutoutBottomRight"] = new CSG.Connector(
+      usbCutoutTopSide3D.closestPointOnLine(parentSwitch.getBoundsCenter()),
+      [0, 0, 1],
+      [0, 1, 0]
+    );
+
+    this.usbCutout = this.csgDependencyTree.nodeFor(usbCutoutCSG);
+
+    this.csgDependencyTree.addConnection("usbCutout-to-spacer", {
+      parent: [this.spacer, "spacer-usbCutoutBottomRight"],
+      child: [this.usbCutout, "usbCutoutBottomRight"],
+      mirror: false,
+      rotationFromNormal: usbCutoutAngle,
+    });
   }
 
   _buildSwitchMatrices() {
