@@ -59,7 +59,7 @@ function switchPlateLeftHand(opts={}) {
   var switchPlate = keyboard.switchPlate.object;
 
   var spacerHeight = fullSpacer.getBounds()[1].z - fullSpacer.getBounds()[0].z;
-  var primaryMatrix = keyboard.leftHandSwitchLayout.primaryMatrix.switchMatrix;
+  var primaryMatrix = keyboard.primaryMatrix.switchMatrix;
   var hullSwitchRadiusDifferential = primaryMatrix.spacerDepth;
   var primaryMatrixCaseAdditionalHeadroom = primaryMatrix.caseAdditionalRadiiOffsets.exterior.top;
   if (opts.addCutoutForHDMIConnector) {
@@ -71,7 +71,7 @@ function switchPlateLeftHand(opts={}) {
       [0, 1, 0]
     );
     var fullSpacerBounds = fullSpacer.getBounds();
-    var x = keyboard.leftHandSwitchLayout.primaryMatrix.cutout.object.getBounds()[1].x;
+    var x = keyboard.primaryMatrix.cutout.object.getBounds()[1].x;
     fullSpacer.properties.hdmiCutoutConnector = new CSG.Connector(
       [x, fullSpacerBounds[1].y, fullSpacerBounds[0].z],
       [0, 0, 1],
