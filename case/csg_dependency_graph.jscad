@@ -41,8 +41,8 @@ class _CSGDependencyGraph {
   }
 
   nodeFor(object) {
-    if (!(object instanceof CSG)) {
-      throw new Error("Expected object to be instance of CSG.");
+    if (!((object instanceof CSG) || (object instanceof CAG))) {
+      throw new Error("Expected object to be instance of CSG or CAG.");
     }
 
     var node = this.nodesByObject.get(object);

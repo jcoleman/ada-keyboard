@@ -96,6 +96,8 @@ class _SwitchMatrix {
       }
     }
 
+    this._buildHulls();
+
     if (!opts.csgDependencyTree) {
       this.csgDependencyTree.resolve();
     }
@@ -132,7 +134,7 @@ class _SwitchMatrix {
     if (this._plate) {
        return this._plate;
     } else {
-      var plate = this._exteriorHull.extrude({offset: [0, 0, SWITCH_PLATE_THICKNESS]});
+      var plate = this.exteriorHull.object.extrude({offset: [0, 0, SWITCH_PLATE_THICKNESS]});
       var anchorCenter = this.anchorSwitch.properties.center.point;
       plate.properties[this.name + "Matrix-anchorSwitch"] = new CSG.Connector(
         [anchorCenter.x, anchorCenter.y, SWITCH_PLATE_THICKNESS / 2],
@@ -148,7 +150,7 @@ class _SwitchMatrix {
     if (this._cutout) {
        return this._cutout;
     } else {
-      var cutout = this._interiorHull.extrude({offset: [0, 0, SWITCH_PLATE_THICKNESS]});
+      var cutout = this._interiorHull.object.extrude({offset: [0, 0, SWITCH_PLATE_THICKNESS]});
       var anchorCenter = this.anchorSwitch.properties.center.point;
       cutout.properties[this.name + "Matrix-anchorSwitch"] = new CSG.Connector(
         [anchorCenter.x, anchorCenter.y, SWITCH_PLATE_THICKNESS / 2],
@@ -198,7 +200,27 @@ class _SwitchMatrix {
     }
   }
 
-  get _exteriorHull() {
+  _buildHulls() {
+    for (property of ["exterior", "interior"]) {
+      var switchHull = this["_" + property + "Hull"]();
+      switchHull.properties = new CSG.Properties();
+      switchHull.properties.properties[this.name + "Matrix-anchorSwitch"] = new CSG.Connector(
+        this.anchorSwitch.properties.center.point,
+        [0, 0, 1],
+        [0, 1, 0]
+      );
+      var hullNode = this.csgDependencyTree.nodeFor(switchHull);
+      this.csgDependencyTree.addConnection(this.name + "Matrix-" + property + "Hull", {
+        parent: [this.plate, this.name + "Matrix-anchorSwitch"],
+        child: [hullNode, this.name + "Matrix-anchorSwitch"],
+        mirror: false,
+        rotationFromNormal: 0,
+      });
+      this[property + "Hull"] = hullNode;
+    }
+  }
+
+  _exteriorHull() {
     return this._hull({
       radius: this.caseBaseRadiiFromSwitchCenters.exterior,
       offset: this.caseAdditionalRadiiOffsets.exterior,
@@ -206,7 +228,7 @@ class _SwitchMatrix {
     });
   }
 
-  get _interiorHull() {
+  _interiorHull() {
     return this._hull({
       radius: this.caseBaseRadiiFromSwitchCenters.interior,
       offset: this.caseAdditionalRadiiOffsets.interior,
