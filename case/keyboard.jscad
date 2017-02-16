@@ -166,6 +166,7 @@ class _Keyboard {
 
   //_addBottomCase() {
   bottomCaseCSG() {
+    //var exteriorHull = this.primaryMatrix.exteriorHull.object.union(this.thumbMatrix.exteriorHull.object);
     var csgs = [
       this.primaryMatrix.exteriorHull.object,
       this.thumbMatrix.exteriorHull.object,
@@ -191,21 +192,6 @@ class _Keyboard {
       }
 
       var polygons = [bottomCAG, topCAG].reduce(function(acc, cag) {
-        // var vertices = cag.sides.reduce(function(acc, side) {
-        //   acc.push(side.vertex0, side.vertex1);
-        //   return acc;
-        // }, []);
-        // acc.push(
-        //   new CSG.Polygon(
-        //     vertices.map(function(vertex) { return new CSG.Vertex(vertex.pos); })
-        //   )
-        // );
-
-        // acc.push(
-        //   new CSG.Polygon(
-        //     cag.sides.map(function(side) { return new CSG.Vertex(side.vertex0.pos); })
-        //   )
-        // );
         var points = cag.sides.map(function(side) { return side.vertex0.pos; });
         var vertices = points.map(function(point) { return new CSG.Vertex(point); });
         var plane = CSG.Plane.fromManyPoints.apply(CSG.Plane.fromManyPoints, points);
@@ -218,49 +204,13 @@ class _Keyboard {
           ],
           poly.shared, plane));
         }
-
-
-        console.log("added", acc.length - origCount);
         return acc;
       }, []);
-      polygons.forEach(function(polygon, i) {
-        //if (i == 1) { debugger }
-        if (!CSG.Polygon.verticesConvex(polygon.vertices, polygon.plane.normal)) {
-          console.log("concave" + String(i), polygon.vertices.length);
-        }
-      });
 
-      // var topVectorPairs = topCAG._toVector3DPairs();
-      // var bottomVectorPairs = bottomCAG._toVector3DPairs();
-      // for (var i = 0; i < topVectorPairs.length; ++i) {
-      //   var topPair = topVectorPairs[i];
-      //   var bottomPair = bottomVectorPairs[i];
-      //   polygons.push(
-      //      new CSG.Polygon([
-      //        new CSG.Vertex(bottomPair[1]),
-      //        new CSG.Vertex(bottomPair[0]),
-      //        new CSG.Vertex(topPair[0]),
-      //      ]),
-      //      new CSG.Polygon([
-      //        new CSG.Vertex(bottomPair[1]),
-      //        new CSG.Vertex(topPair[0]),
-      //        new CSG.Vertex(topPair[1]),
-      //      ])
-      //   );
-      //   if (i == 0) {
-      //     debugger;
-      //   }
-      // }
       for (var i = 0; i < topCAG.sides.length; ++i) {
         var topSide = topCAG.sides[i];
         var bottomSide = bottomCAG.sides[i];
         polygons.push(
-           // new CSG.Polygon([
-           //   new CSG.Vertex(topSide.vertex0.pos),
-           //   new CSG.Vertex(topSide.vertex1.pos),
-           //   new CSG.Vertex(bottomSide.vertex1.pos),
-           //   new CSG.Vertex(bottomSide.vertex0.pos),
-           // ])
            new CSG.Polygon([
              new CSG.Vertex(bottomSide.vertex1.pos),
              new CSG.Vertex(bottomSide.vertex0.pos),
@@ -283,7 +233,7 @@ class _Keyboard {
       return CSG.fromPolygons(polygons);
     });
 
-    return csgs[0].canonicalized().reTesselated();//.toPointCloud([2, 2, 2]);
+    return csgs[0];//.canonicalized().reTesselated();//.toPointCloud([2, 2, 2]);
   }
 
   _buildSwitchMatrices() {
