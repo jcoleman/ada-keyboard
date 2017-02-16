@@ -55,6 +55,8 @@ class _Keyboard {
       csg = csg.subtract(this.usbCutout.object);
     }
 
+    // TODO: split CSGDependencyTree class in CSGLayoutDependencyTree and CSG<union/subtraction/intersection operation>DependencyTree
+    // so that the above isn't necessary.
     return csg;
   }
 
@@ -128,7 +130,7 @@ class _Keyboard {
     );
 
     var usbCutoutPlateTopSide = null;
-    var primaryExteriorHull = this.primaryMatrix.switchMatrix._exteriorHull;
+    var primaryExteriorHull = this.primaryMatrix.switchMatrix._exteriorHull();
     var primaryExteriorBounds = primaryExteriorHull.getBounds();
     for (var i = 0; i < primaryExteriorHull.sides.length; ++i) {
       var side = primaryExteriorHull.sides[i];
@@ -160,6 +162,128 @@ class _Keyboard {
       mirror: false,
       rotationFromNormal: usbCutoutAngle,
     });
+  }
+
+  //_addBottomCase() {
+  bottomCaseCSG() {
+    var csgs = [
+      this.primaryMatrix.exteriorHull.object,
+      this.thumbMatrix.exteriorHull.object,
+    ].map(function(exteriorHull) {;
+      var exteriorHullVertices = exteriorHull.sides.reduce(function(acc, side) {
+        acc.push(side.vertex0, side.vertex1);
+        return acc;
+      }, []);
+      for (var vertex of exteriorHullVertices) {
+        vertex.pos = new CSG.Vector3D([vertex.pos.x, vertex.pos.y, 0]);
+      }
+
+      var rotatedCAG = exteriorHull.rotateY(-BOTTOM_CASE_TENTING_ANGLE);
+      var topCAG = rotatedCAG.translate([0, 0, -rotatedCAG.getBounds()[0].z + BOTTOM_CASE_MINIMUM_THICKNESS]);
+
+      var bottomCAG = CAG.fromObject(rotatedCAG);
+      var bottomCAGVertices = bottomCAG.sides.reduce(function(acc, side) {
+        acc.push(side.vertex0, side.vertex1);
+        return acc;
+      }, []);
+      for (var vertex of bottomCAGVertices) {
+        vertex.pos = new CSG.Vector3D([vertex.pos.x, vertex.pos.y, 0]);
+      }
+
+      var polygons = [bottomCAG, topCAG].reduce(function(acc, cag) {
+        // var vertices = cag.sides.reduce(function(acc, side) {
+        //   acc.push(side.vertex0, side.vertex1);
+        //   return acc;
+        // }, []);
+        // acc.push(
+        //   new CSG.Polygon(
+        //     vertices.map(function(vertex) { return new CSG.Vertex(vertex.pos); })
+        //   )
+        // );
+
+        // acc.push(
+        //   new CSG.Polygon(
+        //     cag.sides.map(function(side) { return new CSG.Vertex(side.vertex0.pos); })
+        //   )
+        // );
+        var points = cag.sides.map(function(side) { return side.vertex0.pos; });
+        var vertices = points.map(function(point) { return new CSG.Vertex(point); });
+        var plane = CSG.Plane.fromManyPoints.apply(CSG.Plane.fromManyPoints, points);
+        var poly = new CSG.Polygon(vertices);
+        var origCount = acc.length;
+        var firstVertex = poly.vertices[0];
+        for (var i = poly.vertices.length - 3; i >= 0; i--) {
+          acc.push(new CSG.Polygon([
+            firstVertex, poly.vertices[i + 1], poly.vertices[i + 2]
+          ],
+          poly.shared, plane));
+        }
+
+
+        console.log("added", acc.length - origCount);
+        return acc;
+      }, []);
+      polygons.forEach(function(polygon, i) {
+        //if (i == 1) { debugger }
+        if (!CSG.Polygon.verticesConvex(polygon.vertices, polygon.plane.normal)) {
+          console.log("concave" + String(i), polygon.vertices.length);
+        }
+      });
+
+      // var topVectorPairs = topCAG._toVector3DPairs();
+      // var bottomVectorPairs = bottomCAG._toVector3DPairs();
+      // for (var i = 0; i < topVectorPairs.length; ++i) {
+      //   var topPair = topVectorPairs[i];
+      //   var bottomPair = bottomVectorPairs[i];
+      //   polygons.push(
+      //      new CSG.Polygon([
+      //        new CSG.Vertex(bottomPair[1]),
+      //        new CSG.Vertex(bottomPair[0]),
+      //        new CSG.Vertex(topPair[0]),
+      //      ]),
+      //      new CSG.Polygon([
+      //        new CSG.Vertex(bottomPair[1]),
+      //        new CSG.Vertex(topPair[0]),
+      //        new CSG.Vertex(topPair[1]),
+      //      ])
+      //   );
+      //   if (i == 0) {
+      //     debugger;
+      //   }
+      // }
+      for (var i = 0; i < topCAG.sides.length; ++i) {
+        var topSide = topCAG.sides[i];
+        var bottomSide = bottomCAG.sides[i];
+        polygons.push(
+           // new CSG.Polygon([
+           //   new CSG.Vertex(topSide.vertex0.pos),
+           //   new CSG.Vertex(topSide.vertex1.pos),
+           //   new CSG.Vertex(bottomSide.vertex1.pos),
+           //   new CSG.Vertex(bottomSide.vertex0.pos),
+           // ])
+           new CSG.Polygon([
+             new CSG.Vertex(bottomSide.vertex1.pos),
+             new CSG.Vertex(bottomSide.vertex0.pos),
+             new CSG.Vertex(topSide.vertex0.pos),
+           ]),
+           new CSG.Polygon([
+             new CSG.Vertex(bottomSide.vertex1.pos),
+             new CSG.Vertex(topSide.vertex0.pos),
+             new CSG.Vertex(topSide.vertex1.pos),
+           ])
+        );
+      }
+
+      polygons.forEach(function(polygon) {
+        if (!CSG.Polygon.verticesConvex(polygon.vertices, polygon.plane.normal)) {
+          throw new Error("concave");
+        }
+      });
+
+      return CSG.fromPolygons(polygons);
+    });
+
+    return csgs[0].canonicalized().reTesselated();//.toPointCloud([2, 2, 2]);
   }
 
   _buildSwitchMatrices() {

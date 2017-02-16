@@ -68,7 +68,8 @@ function main(params) {
   }
 
   var keyboard = new Keyboard(plateParams);
-  var result = keyboard.buildCSG();
+  //var result = keyboard.buildCSG();
+  var result = keyboard.bottomCaseCSG();
 
   if (params.hand == "right") {
     result = result.mirroredX();

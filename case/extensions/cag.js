@@ -17,3 +17,5 @@ CAG.prototype.transform = function(matrix4x4) {
   }
   return result;
 }
+//CAG.prototype.getTransformationTo = CSG.Connector.prototype.getTransformationTo;
+CAG.prototype.connectTo = CSG.prototype.connectTo;

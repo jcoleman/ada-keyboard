@@ -15,7 +15,6 @@ class _SwitchMatrix {
     caseBaseRadiiFromSwitchCenters: {}, // E.g., {interior: 5, exterior, 10}
     caseAdditionalRadiiOffsets: {}, // E.g., {exterior: {bottom: -25, top: 5}}
     squareTopRightCorner: false,
-    csgDependencyTree: null, // Optional override.
   }) {
     if (!Array.isArray(opts.placementMatrix) && opts.placementMatrix.length > 0) {
       throw new Error("Expected placement matrix to be array of at least length 1.");
@@ -34,7 +33,7 @@ class _SwitchMatrix {
     this.caseBaseRadiiFromSwitchCenters = opts.caseBaseRadiiFromSwitchCenters;
     this.caseAdditionalRadiiOffsets = opts.caseAdditionalRadiiOffsets || {};
     this.squareTopRightCorner = opts.squareTopRightCorner;
-    this.csgDependencyTree = opts.csgDependencyTree || new CSGDependencyGraph();
+    this.csgDependencyTree = new CSGDependencyGraph();
     this.matrix = [];
 
     for (var row = 0; row < this.placementMatrix.length; ++row) {
@@ -96,11 +95,10 @@ class _SwitchMatrix {
       }
     }
 
-    this._buildHulls();
+    this.csgDependencyTree.resolve();
 
-    if (!opts.csgDependencyTree) {
-      this.csgDependencyTree.resolve();
-    }
+    // Depends on switches already having layout.
+    this._buildHulls();
   }
 
   switchMatrixComponentsForDependencyTree(csgDependencyTree) {
@@ -134,7 +132,7 @@ class _SwitchMatrix {
     if (this._plate) {
        return this._plate;
     } else {
-      var plate = this.exteriorHull.object.extrude({offset: [0, 0, SWITCH_PLATE_THICKNESS]});
+      var plate = this.exteriorHull.extrude({offset: [0, 0, SWITCH_PLATE_THICKNESS]});
       var anchorCenter = this.anchorSwitch.properties.center.point;
       plate.properties[this.name + "Matrix-anchorSwitch"] = new CSG.Connector(
         [anchorCenter.x, anchorCenter.y, SWITCH_PLATE_THICKNESS / 2],
@@ -150,7 +148,7 @@ class _SwitchMatrix {
     if (this._cutout) {
        return this._cutout;
     } else {
-      var cutout = this._interiorHull.object.extrude({offset: [0, 0, SWITCH_PLATE_THICKNESS]});
+      var cutout = this.interiorHull.extrude({offset: [0, 0, SWITCH_PLATE_THICKNESS]});
       var anchorCenter = this.anchorSwitch.properties.center.point;
       cutout.properties[this.name + "Matrix-anchorSwitch"] = new CSG.Connector(
         [anchorCenter.x, anchorCenter.y, SWITCH_PLATE_THICKNESS / 2],
@@ -201,22 +199,25 @@ class _SwitchMatrix {
   }
 
   _buildHulls() {
-    for (property of ["exterior", "interior"]) {
+    for (var property of ["exterior", "interior"]) {
       var switchHull = this["_" + property + "Hull"]();
       switchHull.properties = new CSG.Properties();
-      switchHull.properties.properties[this.name + "Matrix-anchorSwitch"] = new CSG.Connector(
+      switchHull.properties[this.name + "Matrix-anchorSwitch"] = new CSG.Connector(
         this.anchorSwitch.properties.center.point,
         [0, 0, 1],
         [0, 1, 0]
       );
-      var hullNode = this.csgDependencyTree.nodeFor(switchHull);
-      this.csgDependencyTree.addConnection(this.name + "Matrix-" + property + "Hull", {
-        parent: [this.plate, this.name + "Matrix-anchorSwitch"],
-        child: [hullNode, this.name + "Matrix-anchorSwitch"],
-        mirror: false,
-        rotationFromNormal: 0,
-      });
-      this[property + "Hull"] = hullNode;
+      this[property + "Hull"] = switchHull;
+      // var hullNode = this.csgDependencyTree.nodeFor(switchHull);
+      // // Since these two connectors are de facto identical points
+      // // we don't need to trigger layout again for this to be valid.
+      // this.csgDependencyTree.addConnection(this.name + "Matrix-" + property + "Hull", {
+      //   parent: [this.anchorDescriptor.keySwitch, "center"],
+      //   child: [hullNode, this.name + "Matrix-anchorSwitch"],
+      //   mirror: false,
+      //   rotationFromNormal: 0,
+      // });
+      // this[property + "Hull"] = hullNode;
     }
   }
 
@@ -318,7 +319,7 @@ class SwitchMatrixComponents {
     switchMatrix: null,
   }) {
     this.plate = opts.csgDependencyTree.nodeFor(opts.switchMatrix.plate);
-    for (var csgProperty of ["keycaps", "switchHoles", "cutout"]) {
+    for (var csgProperty of ["keycaps", "switchHoles", "cutout", "exteriorHull", "interiorHull"]) {
       this[csgProperty] = opts.csgDependencyTree.nodeFor(opts.switchMatrix[csgProperty]);
       opts.csgDependencyTree.addConnection(opts.switchMatrix.name + "Matrix-" + csgProperty, {
         parent: [this.plate, opts.switchMatrix.name + "Matrix-anchorSwitch"],
