@@ -166,6 +166,8 @@ class _Keyboard {
 
   //_addBottomCase() {
   bottomCaseCSG() {
+    // TODO 1. test with a square cag; 2. test without rotation
+
     //var exteriorHull = this.primaryMatrix.exteriorHull.object.union(this.thumbMatrix.exteriorHull.object);
     var csgs = [
       this.primaryMatrix.exteriorHull.object,
@@ -182,6 +184,9 @@ class _Keyboard {
       var rotatedCAG = exteriorHull.rotateY(-BOTTOM_CASE_TENTING_ANGLE);
       var topCAG = rotatedCAG.translate([0, 0, -rotatedCAG.getBounds()[0].z + BOTTOM_CASE_MINIMUM_THICKNESS]);
 
+      // TODO find the bounds center from the bottom cag and set it as a property
+      // then we can do the same operations with the interior hull and subtract
+      // to lessen the mass of the solid.
       var bottomCAG = CAG.fromObject(rotatedCAG);
       var bottomCAGVertices = bottomCAG.sides.reduce(function(acc, side) {
         acc.push(side.vertex0, side.vertex1);
@@ -190,6 +195,41 @@ class _Keyboard {
       for (var vertex of bottomCAGVertices) {
         vertex.pos = new CSG.Vector3D([vertex.pos.x, vertex.pos.y, 0]);
       }
+
+      // var rotatedCAG2D = CAG.fromObject(rotatedCAG);
+      // var rotatedCAG2DVertices = rotatedCAG2D.sides.reduce(function(acc, side) {
+      //   acc.push(side.vertex0, side.vertex1);
+      //   return acc;
+      // }, []);
+      // for (var vertex of rotatedCAG2DVertices) {
+      //   vertex.pos = new CSG.Vector2D([vertex.pos.x, vertex.pos.y]);
+      // }
+      // var topPolygons = rotatedCAG2D._toPlanePolygons({
+      //   toConnector: new CSG.Connector([0, 0, 0], [0, 0, 1], [0, 1, 0]).rotateY(-BOTTOM_CASE_TENTING_ANGLE),
+      // });
+      // var topPolygonsMinVector = topPolygons.reduce(function(minVector, polygon) {
+      //   return polygon.vertices.reduce(function(minVector, vertex) {
+      //     return minVector.min(vertex.pos);
+      //   }, minVector);
+      // }, topPolygons[0].vertices[0].pos);
+      // var topPolygonsMaxVector = topPolygons.reduce(function(maxVector, polygon) {
+      //   return polygon.vertices.reduce(function(maxVector, vertex) {
+      //     return maxVector.max(vertex.pos);
+      //   }, maxVector);
+      // }, topPolygons[0].vertices[0].pos);
+      // var bottomCAGBounds = bottomCAG.getBounds();
+      // topPolygons = topPolygons.map(function(tri) {
+      //   tri.setColor([0, 1, 0]);
+      //   return tri.translate([topPolygonsMinVector.x - bottomCAGBounds[0].x, 0, -topPolygonsMinVector.z + BOTTOM_CASE_MINIMUM_THICKNESS]);
+      // });
+      // var bottomPolygons = rotatedCAG2D._toPlanePolygons({
+      //   toConnector: new CSG.Connector([0, 0, 0], [0, 0, 1], [0, 1, 0]),
+      // });
+      // bottomPolygons = bottomPolygons.map(function(tri) {
+      //   tri.setColor([0, 0, 1]);
+      //   return tri;
+      // });
+      // var polygons = topPolygons.concat(bottomPolygons);
 
       var polygons = [bottomCAG, topCAG].reduce(function(acc, cag) {
         var points = cag.sides.map(function(side) { return side.vertex0.pos; });
@@ -203,6 +243,7 @@ class _Keyboard {
             firstVertex, poly.vertices[i + 1], poly.vertices[i + 2]
           ],
           poly.shared, plane));
+          acc[acc.length - 1].setColor(cag === bottomCAG ? [0, 1, 0] : [0, 0, 1]);
         }
         return acc;
       }, []);
