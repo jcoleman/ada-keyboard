@@ -54,7 +54,7 @@ function getParameterDefinitions() {
 }
 
 function main(params) {
-  include("csg.js");
+  include("extensions/csg.js");
 
   var plateParams = {};
   var plateParamNames = [
