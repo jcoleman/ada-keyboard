@@ -75,6 +75,9 @@ function main(params) {
 
   if (params.center) {
     result = result.center('x', 'y');
+
+    var bounds = result.getBounds();
+    result = result.translate([0, 0, -bounds[0].z]);
   }
 
   if (params.displayDebuggingCoordinateLabels) {
