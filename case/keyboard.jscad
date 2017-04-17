@@ -61,7 +61,7 @@ class _Keyboard {
   _addSpacer(spacerCSG) {
     var spacerAnchorCenter = spacerCSG.properties["primaryMatrix-anchorSwitch"].point;
     spacerCSG.properties["switchPlate-primaryMatrix-anchorSwitch"] = new CSG.Connector(
-      [spacerAnchorCenter.x, spacerAnchorCenter.y, spacerAnchorCenter.z - SWITCH_PLATE_THICKNESS],
+      [spacerAnchorCenter.x, spacerAnchorCenter.y, spacerAnchorCenter.z + SWITCH_PLATE_THICKNESS],
       [0, 0, 1],
       [0, 1, 0]
     );
