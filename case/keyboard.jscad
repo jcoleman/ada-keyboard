@@ -166,10 +166,15 @@ class _Keyboard {
 
   //_addBottomCase() {
   bottomCaseCSG() {
-    // TODO 1. test with a square cag; 2. test without rotation
+    // TODO:
+    // 1. test with a square cag: same results
+    // 2. test without rotation: same results
+    // 3. test with polygon order [top, sides, bottom] (and variations): same results
+    // fix: use `flipped()` (to ensure proper polygon facing direction?)
 
     //var exteriorHull = this.primaryMatrix.exteriorHull.object.union(this.thumbMatrix.exteriorHull.object);
     var csgs = [
+      //CAG.rectangle({center: [0,0], radius: [50, 50]}),
       this.primaryMatrix.exteriorHull.object,
       this.thumbMatrix.exteriorHull.object,
     ].map(function(exteriorHull) {;
@@ -183,6 +188,8 @@ class _Keyboard {
 
       var rotatedCAG = exteriorHull.rotateY(-BOTTOM_CASE_TENTING_ANGLE);
       var topCAG = rotatedCAG.translate([0, 0, -rotatedCAG.getBounds()[0].z + BOTTOM_CASE_MINIMUM_THICKNESS]);
+      // var rotatedCAG = exteriorHull;
+      // var topCAG = rotatedCAG.translate([0, 0, -rotatedCAG.getBounds()[0].z + 50]);
 
       // TODO find the bounds center from the bottom cag and set it as a property
       // then we can do the same operations with the interior hull and subtract
@@ -231,20 +238,32 @@ class _Keyboard {
       // });
       // var polygons = topPolygons.concat(bottomPolygons);
 
+
       var polygons = [bottomCAG, topCAG].reduce(function(acc, cag) {
         var points = cag.sides.map(function(side) { return side.vertex0.pos; });
         var vertices = points.map(function(point) { return new CSG.Vertex(point); });
         var plane = CSG.Plane.fromManyPoints.apply(CSG.Plane.fromManyPoints, points);
         var poly = new CSG.Polygon(vertices);
-        var origCount = acc.length;
+        // var origCount = acc.length;
         var firstVertex = poly.vertices[0];
         for (var i = poly.vertices.length - 3; i >= 0; i--) {
           acc.push(new CSG.Polygon([
             firstVertex, poly.vertices[i + 1], poly.vertices[i + 2]
           ],
           poly.shared, plane));
-          acc[acc.length - 1].setColor(cag === bottomCAG ? [0, 1, 0] : [0, 0, 1]);
+          if (cag === bottomCAG) {
+            acc[acc.length - 1].setColor([0, 1, 0]);
+            acc[acc.length - 1] = acc[acc.length - 1].flipped();
+          } else {
+            acc[acc.length - 1].setColor([0, 0, 1]);
+          }
         }
+        // if (cag === bottomCAG) {
+        //   poly = poly.flipped().setColor([0, 1, 0]);
+        // } else {
+        //   poly = poly.setColor([0, 0, 1]);
+        // }
+        // acc.push(poly);
         return acc;
       }, []);
 
@@ -256,18 +275,18 @@ class _Keyboard {
              new CSG.Vertex(bottomSide.vertex1.pos),
              new CSG.Vertex(bottomSide.vertex0.pos),
              new CSG.Vertex(topSide.vertex0.pos),
-           ]),
+           ]).flipped(),
            new CSG.Polygon([
              new CSG.Vertex(bottomSide.vertex1.pos),
              new CSG.Vertex(topSide.vertex0.pos),
              new CSG.Vertex(topSide.vertex1.pos),
-           ])
+           ]).flipped()
         );
       }
 
-      polygons.forEach(function(polygon) {
+      polygons.forEach(function(polygon, i) {
         if (!CSG.Polygon.verticesConvex(polygon.vertices, polygon.plane.normal)) {
-          throw new Error("concave");
+          throw new Error("concave " + i);
         }
       });
 
