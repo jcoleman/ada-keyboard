@@ -186,69 +186,32 @@ class _Keyboard {
       // then we can do the same operations with the interior hull and subtract
       // to lessen the mass of the solid.
 
-
-      // Alternative approach that uses internal CSG API to generate
-      // the wall polygons.
-      // var rotatedCAG2D = CAG.fromObject(rotatedCAG);
-      // var rotatedCAG2DVertices = rotatedCAG2D.sides.reduce(function(acc, side) {
-      //   acc.push(side.vertex0, side.vertex1);
-      //   return acc;
-      // }, []);
-      // for (var vertex of rotatedCAG2DVertices) {
-      //   vertex.pos = new CSG.Vector2D([vertex.pos.x, vertex.pos.y]);
-      // }
-      // var topPolygons = rotatedCAG2D._toPlanePolygons({
-      //   toConnector: new CSG.Connector([0, 0, 0], [0, 0, 1], [0, 1, 0]).rotateY(-BOTTOM_CASE_TENTING_ANGLE),
-      // });
-      // var topPolygonsMinVector = topPolygons.reduce(function(minVector, polygon) {
-      //   return polygon.vertices.reduce(function(minVector, vertex) {
-      //     return minVector.min(vertex.pos);
-      //   }, minVector);
-      // }, topPolygons[0].vertices[0].pos);
-      // var topPolygonsMaxVector = topPolygons.reduce(function(maxVector, polygon) {
-      //   return polygon.vertices.reduce(function(maxVector, vertex) {
-      //     return maxVector.max(vertex.pos);
-      //   }, maxVector);
-      // }, topPolygons[0].vertices[0].pos);
-      // var bottomCAGBounds = bottomCAG.getBounds();
-      // topPolygons = topPolygons.map(function(tri) {
-      //   tri.setColor([0, 1, 0]);
-      //   return tri.translate([topPolygonsMinVector.x - bottomCAGBounds[0].x, 0, -topPolygonsMinVector.z + BOTTOM_CASE_MINIMUM_THICKNESS]);
-      // });
-      // var bottomPolygons = rotatedCAG2D._toPlanePolygons({
-      //   toConnector: new CSG.Connector([0, 0, 0], [0, 0, 1], [0, 1, 0]),
-      // });
-      // bottomPolygons = bottomPolygons.map(function(tri) {
-      //   tri.setColor([0, 0, 1]);
-      //   return tri;
-      // });
-      // var polygons = topPolygons.concat(bottomPolygons);
-
-
+      // Build the bottom and top polygons.
       var polygons = [bottomCAG, topCAG].reduce(function(acc, cag) {
-        var points = cag.sides.map(function(side) { return side.vertex0.pos; });
-        var vertices = points.map(function(point) { return new CSG.Vertex(point); });
-        var plane = CSG.Plane.fromManyPoints.apply(CSG.Plane.fromManyPoints, points);
-        var poly = new CSG.Polygon(vertices);
-        var firstVertex = poly.vertices[0];
-        for (var i = poly.vertices.length - 3; i >= 0; i--) {
-          acc.push(new CSG.Polygon([
-            firstVertex, poly.vertices[i + 1], poly.vertices[i + 2]
-          ],
-          poly.shared, plane));
+        var vertices = cag.sides.map(function(side) { return new CSG.Vertex(side.vertex0.pos); });
+        for (var i = vertices.length - 3; i >= 0; --i) {
+          var triangle = new CSG.Polygon([
+            vertices[0], vertices[i + 1], vertices[i + 2]
+          ]);
+
           if (cag === bottomCAG) {
-            acc[acc.length - 1].setColor([0, 1, 0]);
-            acc[acc.length - 1] = acc[acc.length - 1].flipped();
+            triangle.setColor([0, 1, 0]);
+            triangle = triangle.flipped();
           } else {
-            acc[acc.length - 1].setColor([0, 0, 1]);
+            triangle.setColor([0, 0, 1]);
           }
+
+          acc.push(triangle);
         }
         return acc;
       }, []);
 
+      // Build the wall polygons.
       for (var i = 0; i < topCAG.sides.length; ++i) {
         var topSide = topCAG.sides[i];
         var bottomSide = bottomCAG.sides[i];
+        // Every bottom/top polygon side pair forms the rectangle T0-T1-B1-B0;
+        // split each rectangle into two triangles: B1-B0-T0 and B1-T0-T1.
         polygons.push(
            new CSG.Polygon([
              new CSG.Vertex(bottomSide.vertex1.pos),
@@ -263,16 +226,17 @@ class _Keyboard {
         );
       }
 
+      // Validate that we haven't messed up our conversion into convex polygons.
       polygons.forEach(function(polygon, i) {
         if (!CSG.Polygon.verticesConvex(polygon.vertices, polygon.plane.normal)) {
-          throw new Error("concave " + i);
+          throw new Error("Found concave polygon at index " + i);
         }
       });
 
       return CSG.fromPolygons(polygons);
     });
 
-    return csgs[0];//.canonicalized().reTesselated();//.toPointCloud([2, 2, 2]);
+    return csgs[0];
   }
 
   _buildSwitchMatrices() {
