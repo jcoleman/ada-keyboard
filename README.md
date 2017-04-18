@@ -7,7 +7,7 @@ Toolchain
 
 A keyboard shell is being modeling using [OpenJSCAD](http://openjscad.org) ([User Guide](https://en.wikibooks.org/wiki/OpenJSCAD_User_Guide)). The currently released version of OpenJSCAD (0.5.2) does not properly load relative `include` paths; if you're developing locally and would like to load the model consider using [my fork](https://github.com/jcoleman/OpenJSCAD.org/) ([hosted viewer](https://jcoleman.github.io/OpenJSCAD.org/)) instead.
 
-You can [view the current 3D model in the OpenJSCAD viewer](https://jcoleman.github.io/OpenJSCAD.org/#https://raw.githubusercontent.com/jcoleman/ada-keyboard/master/case/main.jscad). Note that this unfortunately currently only works properly in Chrome and not Safari.
+You can [view the current 3D model in the OpenJSCAD viewer](https://jcoleman.github.io/OpenJSCAD.org/#https://raw.githubusercontent.com/jcoleman/ada-keyboard/master/case/main.jscad).
 
 History
 ---
