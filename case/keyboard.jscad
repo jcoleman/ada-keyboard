@@ -166,43 +166,29 @@ class _Keyboard {
 
   //_addBottomCase() {
   bottomCaseCSG() {
-    // TODO:
-    // 1. test with a square cag: same results
-    // 2. test without rotation: same results
-    // 3. test with polygon order [top, sides, bottom] (and variations): same results
-    // fix: use `flipped()` (to ensure proper polygon facing direction?)
-
     //var exteriorHull = this.primaryMatrix.exteriorHull.object.union(this.thumbMatrix.exteriorHull.object);
     var csgs = [
-      //CAG.rectangle({center: [0,0], radius: [50, 50]}),
       this.primaryMatrix.exteriorHull.object,
       this.thumbMatrix.exteriorHull.object,
-    ].map(function(exteriorHull) {;
-      var exteriorHullVertices = exteriorHull.sides.reduce(function(acc, side) {
-        acc.push(side.vertex0, side.vertex1);
-        return acc;
-      }, []);
-      for (var vertex of exteriorHullVertices) {
-        vertex.pos = new CSG.Vector3D([vertex.pos.x, vertex.pos.y, 0]);
-      }
+    ].map(function(exteriorHull) {
+      exteriorHull = exteriorHull.withVerticesIn3D(0);
 
+      // Rotate the CAG in 3D space before doing any other operation because
+      // we need both the bottom and top polygons to have the same X, Y values
+      // at each vertex.
       var rotatedCAG = exteriorHull.rotateY(-BOTTOM_CASE_TENTING_ANGLE);
+
+      // Since we rotated around the center we need to translate to normalize the Z coordinates.
       var topCAG = rotatedCAG.translate([0, 0, -rotatedCAG.getBounds()[0].z + BOTTOM_CASE_MINIMUM_THICKNESS]);
-      // var rotatedCAG = exteriorHull;
-      // var topCAG = rotatedCAG.translate([0, 0, -rotatedCAG.getBounds()[0].z + 50]);
+      var bottomCAG = rotatedCAG.withVerticesIn3D(0);
 
       // TODO find the bounds center from the bottom cag and set it as a property
       // then we can do the same operations with the interior hull and subtract
       // to lessen the mass of the solid.
-      var bottomCAG = CAG.fromObject(rotatedCAG);
-      var bottomCAGVertices = bottomCAG.sides.reduce(function(acc, side) {
-        acc.push(side.vertex0, side.vertex1);
-        return acc;
-      }, []);
-      for (var vertex of bottomCAGVertices) {
-        vertex.pos = new CSG.Vector3D([vertex.pos.x, vertex.pos.y, 0]);
-      }
 
+
+      // Alternative approach that uses internal CSG API to generate
+      // the wall polygons.
       // var rotatedCAG2D = CAG.fromObject(rotatedCAG);
       // var rotatedCAG2DVertices = rotatedCAG2D.sides.reduce(function(acc, side) {
       //   acc.push(side.vertex0, side.vertex1);
@@ -244,7 +230,6 @@ class _Keyboard {
         var vertices = points.map(function(point) { return new CSG.Vertex(point); });
         var plane = CSG.Plane.fromManyPoints.apply(CSG.Plane.fromManyPoints, points);
         var poly = new CSG.Polygon(vertices);
-        // var origCount = acc.length;
         var firstVertex = poly.vertices[0];
         for (var i = poly.vertices.length - 3; i >= 0; i--) {
           acc.push(new CSG.Polygon([
@@ -258,12 +243,6 @@ class _Keyboard {
             acc[acc.length - 1].setColor([0, 0, 1]);
           }
         }
-        // if (cag === bottomCAG) {
-        //   poly = poly.flipped().setColor([0, 1, 0]);
-        // } else {
-        //   poly = poly.setColor([0, 0, 1]);
-        // }
-        // acc.push(poly);
         return acc;
       }, []);
 

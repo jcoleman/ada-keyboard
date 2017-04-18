@@ -19,3 +19,13 @@ CAG.prototype.transform = function(matrix4x4) {
 }
 //CAG.prototype.getTransformationTo = CSG.Connector.prototype.getTransformationTo;
 CAG.prototype.connectTo = CSG.prototype.connectTo;
+CAG.prototype.withVerticesIn3D = function(z) {
+  var copy = CAG.fromObject(this);
+  for (var side of copy.sides) {
+    var pos0 = side.vertex0.pos;
+    side.vertex0.pos = new CSG.Vector3D([pos0.x, pos0.y, z]);
+    var pos1 = side.vertex1.pos;
+    side.vertex1.pos = new CSG.Vector3D([pos1.x, pos1.y, z]);
+  }
+  return copy;
+}
