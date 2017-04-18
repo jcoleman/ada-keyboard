@@ -166,7 +166,14 @@ class _Keyboard {
 
   //_addBottomCase() {
   bottomCaseCSG() {
-    //var exteriorHull = this.primaryMatrix.exteriorHull.object.union(this.thumbMatrix.exteriorHull.object);
+    // TODO: We can't use the full exterior hull directly until we have an
+    // algorithm in place to do triangulation for concave polygons.
+    // var exteriorHull = this.primaryMatrix.exteriorHull.object.union(this.thumbMatrix.exteriorHull.object);
+
+    // TODO: find the bounds center from the bottom cag and set it as a property
+    // then we can do the same operations with the interior hull and subtract
+    // to lessen the mass of the solid.
+
     var csgs = [
       this.primaryMatrix.exteriorHull.object,
       this.thumbMatrix.exteriorHull.object,
@@ -181,10 +188,6 @@ class _Keyboard {
       // Since we rotated around the center we need to translate to normalize the Z coordinates.
       var topCAG = rotatedCAG.translate([0, 0, -rotatedCAG.getBounds()[0].z + BOTTOM_CASE_MINIMUM_THICKNESS]);
       var bottomCAG = rotatedCAG.withVerticesIn3D(0);
-
-      // TODO find the bounds center from the bottom cag and set it as a property
-      // then we can do the same operations with the interior hull and subtract
-      // to lessen the mass of the solid.
 
       // Build the bottom and top polygons.
       var polygons = [bottomCAG, topCAG].reduce(function(acc, cag) {
@@ -236,7 +239,9 @@ class _Keyboard {
       return CSG.fromPolygons(polygons);
     });
 
-    return csgs[0];
+    return csgs.reduce(function (acc, csg) {
+      return acc.union(csg);
+    });
   }
 
   _buildSwitchMatrices() {
