@@ -174,11 +174,8 @@ class _Keyboard {
     // then we can do the same operations with the interior hull and subtract
     // to lessen the mass of the solid.
 
-    var csgs = [
-      this.primaryMatrix.exteriorHull.object,
-      this.thumbMatrix.exteriorHull.object,
-    ].map(function(exteriorHull) {
-      exteriorHull = exteriorHull.withVerticesIn3D(0);
+    var [primaryMatrixCAGs, thumbMatrixCAGs] = [this.primaryMatrix, this.thumbMatrix].map(function(matrix) {
+      var exteriorHull = matrix.exteriorHull.object.withVerticesIn3D(0);
 
       // Rotate the CAG in 3D space before doing any other operation because
       // we need both the bottom and top polygons to have the same X, Y values
@@ -186,18 +183,42 @@ class _Keyboard {
       var rotatedCAG = exteriorHull.rotateY(-BOTTOM_CASE_TENTING_ANGLE);
 
       // Since we rotated around the center we need to translate to normalize the Z coordinates.
-      var topCAG = rotatedCAG.translate([0, 0, -rotatedCAG.getBounds()[0].z + BOTTOM_CASE_MINIMUM_THICKNESS]);
-      var bottomCAG = rotatedCAG.withVerticesIn3D(0);
+      // We also include the translation necessary to ensure a minimum thickness of the case.
+      var topCAG = rotatedCAG.translate([0, 0, (exteriorHull.getBounds()[0].z - rotatedCAG.getBounds()[0].z) + BOTTOM_CASE_MINIMUM_THICKNESS]);
+      // TODO: add explanation
+      var bottomCAG = exteriorHull.transform(CSG.Matrix4x4.xScaleForRotationY(-BOTTOM_CASE_TENTING_ANGLE));
 
+      return {
+        top: topCAG,
+        bottom: bottomCAG,
+        exteriorHull: exteriorHull,
+        rotatedCAG: rotatedCAG,
+      };
+    });
+
+    thumbMatrixCAGs.top = thumbMatrixCAGs.top.connectTo(
+      thumbMatrixCAGs.top.properties["anchorSwitchFromPrimaryMatrix"],
+      primaryMatrixCAGs.top.properties["primaryMatrix-anchorSwitch"],
+      false,
+      THUMB_MATRIX_ROTATION
+    );
+    thumbMatrixCAGs.bottom = thumbMatrixCAGs.bottom.connectTo(
+      thumbMatrixCAGs.bottom.properties["anchorSwitchFromPrimaryMatrix"],
+      primaryMatrixCAGs.bottom.properties["primaryMatrix-anchorSwitch"],
+      false,
+      THUMB_MATRIX_ROTATION
+    );
+
+    var csgs = [primaryMatrixCAGs, thumbMatrixCAGs].map(function({top, bottom}) {
       // Build the bottom and top polygons.
-      var polygons = [bottomCAG, topCAG].reduce(function(acc, cag) {
+      var polygons = [bottom, top].reduce(function(acc, cag) {
         var vertices = cag.sides.map(function(side) { return new CSG.Vertex(side.vertex0.pos); });
         for (var i = vertices.length - 3; i >= 0; --i) {
           var triangle = new CSG.Polygon([
             vertices[0], vertices[i + 1], vertices[i + 2]
           ]);
 
-          if (cag === bottomCAG) {
+          if (cag === bottom) {
             triangle.setColor([0, 1, 0]);
             triangle = triangle.flipped();
           } else {
@@ -210,9 +231,9 @@ class _Keyboard {
       }, []);
 
       // Build the wall polygons.
-      for (var i = 0; i < topCAG.sides.length; ++i) {
-        var topSide = topCAG.sides[i];
-        var bottomSide = bottomCAG.sides[i];
+      for (var i = 0; i < top.sides.length; ++i) {
+        var topSide = top.sides[i];
+        var bottomSide = bottom.sides[i];
         // Every bottom/top polygon side pair forms the rectangle T0-T1-B1-B0;
         // split each rectangle into two triangles: B1-B0-T0 and B1-T0-T1.
         polygons.push(
@@ -273,7 +294,7 @@ class _Keyboard {
       squareTopRightCorner: true,
     }).switchMatrixComponentsForDependencyTree(csgDependencyTree);
 
-    this.thumbMatrix = new SwitchMatrix({
+    var rawThumbMatrix = new SwitchMatrix({
       name: "thumb",
       placementMatrix: [
         [1, 1],
@@ -285,18 +306,22 @@ class _Keyboard {
         interior: 3,
         exterior: 10,
       },
-    }).switchMatrixComponentsForDependencyTree(csgDependencyTree);
+    });
+    this.thumbMatrix = rawThumbMatrix.switchMatrixComponentsForDependencyTree(csgDependencyTree);
 
-    this.thumbMatrix.plate.object.properties.anchorSwitchFromPrimaryMatrix = new CSG.Connector(
-      [-4, SWITCH_CENTER_Y_SPACING + 3, this.thumbMatrix.plate.object.properties["thumbMatrix-anchorSwitch"].point.z],
-      [0, 0, 1],
-      [0, 1, 0]
-    );
+    rawThumbMatrix.allObjects.forEach(function(object) {
+      object.properties.anchorSwitchFromPrimaryMatrix = new CSG.Connector(
+        [-4, SWITCH_CENTER_Y_SPACING + 3, object.properties["thumbMatrix-anchorSwitch"].point.z],
+        [0, 0, 1],
+        [0, 1, 0]
+      );
+    });
+
     csgDependencyTree.addConnection("thumbMatrix-plate", {
       parent: [this.primaryMatrix.plate, "primaryMatrix-anchorSwitch"],
       child: [this.thumbMatrix.plate, "anchorSwitchFromPrimaryMatrix"],
       mirror: false,
-      rotationFromNormal: -12,
+      rotationFromNormal: THUMB_MATRIX_ROTATION,
     });
 
     csgDependencyTree.resolve();

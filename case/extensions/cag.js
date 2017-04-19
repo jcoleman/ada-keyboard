@@ -27,5 +27,12 @@ CAG.prototype.withVerticesIn3D = function(z) {
     var pos1 = side.vertex1.pos;
     side.vertex1.pos = new CSG.Vector3D([pos1.x, pos1.y, z]);
   }
+  if (this.properties) {
+    // We don't try to adjust anything in properties since we wouldn't know
+    // how to change it (it would generally already have 3D elements but those
+    // don't strictly make sense anyway in this 2D space).
+    copy.properties = new CSG.Properties();
+    CSG.Properties.cloneObj(this.properties, copy.properties);
+  }
   return copy;
 }

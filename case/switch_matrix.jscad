@@ -198,6 +198,20 @@ class _SwitchMatrix {
     }
   }
 
+  get allObjects() {
+    var self = this;
+    return [
+      "plate",
+      "cutout",
+      "switchHoles",
+      "keycaps",
+      "exteriorHull",
+      "interiorHull",
+    ].map(function(property) {
+      return self[property];
+    });
+  }
+
   _buildHulls() {
     for (var property of ["exterior", "interior"]) {
       var switchHull = this["_" + property + "Hull"]();

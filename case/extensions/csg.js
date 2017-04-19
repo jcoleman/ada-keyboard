@@ -18,3 +18,17 @@ CSG.Plane.fromManyPoints = function() {
    var n=normal.unit();
    return new CSG.Plane(n,n.dot(arguments[0]));
 };
+
+CSG.Matrix4x4.xScaleForRotationY = function(degrees) {
+  var radians = degrees * Math.PI * (1.0 / 180.0);
+  var cos = Math.cos(radians);
+  var sin = Math.sin(radians);
+  var els = [
+    cos, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1
+  ];
+  return new CSG.Matrix4x4(els);
+};
+
