@@ -11,6 +11,7 @@ class _Keyboard {
     this.displayKeyCapsForDebugging = opts.displayKeyCapsForDebugging;
     this.addCutoutForHDMIConnector = opts.addCutoutForHDMIConnector;
     this.addCutoutForUSBConnector = opts.addCutoutForUSBConnector;
+    this.renderedPart = opts.renderedPart;
 
     this._buildSwitchMatrices();
 
@@ -39,6 +40,25 @@ class _Keyboard {
   }
 
   buildCSG() {
+    if (this.renderedPart == "switchPlate") {
+      return this.buildSwitchPlaceCSG();
+    } else if (this.renderedPart == "base") {
+      return this.bottomCaseCSG();
+    } else if (this.renderedPart == "full") {
+      var base = this.bottomCaseCSG();
+      var switchPlate = this.buildSwitchPlaceCSG();
+      switchPlate = switchPlate.connectTo(
+        switchPlate.properties["primaryMatrix-anchorSwitch"],
+        base.properties["primaryMatrix-anchorSwitch"],
+        false
+      );
+      return base.union(switchPlate);
+    } else {
+      throw new Error("Unknown <renderedPart> option: " + this.renderedPart);
+    }
+  }
+
+  buildSwitchPlaceCSG() {
     this.csgDependencyTree.resolve();
 
     var csg = this.spacer.object.union(this.switchPlate.object);
@@ -257,7 +277,9 @@ class _Keyboard {
         }
       });
 
-      return CSG.fromPolygons(polygons);
+      var csg = CSG.fromPolygons(polygons);
+      csg.properties = csg.properties._merge(top.properties);
+      return csg;
     });
 
     return csgs.reduce(function (acc, csg) {

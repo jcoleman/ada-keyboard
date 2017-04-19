@@ -13,10 +13,10 @@ function getParameterDefinitions() {
       initial: "left",
     },
     {
-      name: "part",
+      name: "renderedPart",
       type: "choice",
-      values: ["switchPlate", "base"],
-      captions: ["Switch Plate", "Base"],
+      values: ["switchPlate", "base", "full"],
+      captions: ["Switch Plate", "Base", "Full"],
       caption: "Part to render",
       initial: "switchPlate",
     },
@@ -62,14 +62,14 @@ function main(params) {
     "displayKeyCapsForDebugging",
     "addCutoutForHDMIConnector",
     "addCutoutForUSBConnector",
+    "renderedPart",
   ];
   for (var i = 0; i < plateParamNames.length; ++i) {
     plateParams[plateParamNames[i]] = params[plateParamNames[i]];
   }
 
   var keyboard = new Keyboard(plateParams);
-  //var result = keyboard.buildCSG();
-  var result = keyboard.bottomCaseCSG();
+  var result = keyboard.buildCSG();
 
   if (params.hand == "right") {
     result = result.mirroredX();
