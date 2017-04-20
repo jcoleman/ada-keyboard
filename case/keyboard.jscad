@@ -205,7 +205,11 @@ class _Keyboard {
       // Since we rotated around the center we need to translate to normalize the Z coordinates.
       // We also include the translation necessary to ensure a minimum thickness of the case.
       var topCAG = rotatedCAG.translate([0, 0, (exteriorHull.getBounds()[0].z - rotatedCAG.getBounds()[0].z) + BOTTOM_CASE_MINIMUM_THICKNESS]);
-      // TODO: add explanation
+      // Rotation around the Y axis changes the scale in the X axis when projected onto the original plane.
+      // In theory we could take the rotated CAG and change all Z values to some constant (e.g., 0), but the
+      // problem with that approach is that we change the plane in which connectors etc. lie, and we need
+      // those to remain the same for later use. Instead we apply the same X scaling that would have been
+      // a part of the rotation around the Y axis but without the resulting Z transformation.
       var bottomCAG = exteriorHull.transform(CSG.Matrix4x4.xScaleForRotationY(-BOTTOM_CASE_TENTING_ANGLE));
 
       return {
