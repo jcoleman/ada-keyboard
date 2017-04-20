@@ -26,7 +26,7 @@ class _Keyboard {
     this._addSpacer(spacerCSG);
 
     if (this.displayKeyCapsForDebugging) {
-      this._addKeyCaps();
+      this._addKeycaps();
     }
 
     if (this.addCutoutForHDMIConnector) {
@@ -81,7 +81,7 @@ class _Keyboard {
 
     this.csgDependencyTree.addConnection("keycaps-to-switchPlate", {
       parent: [this.switchPlate, "primaryMatrix-anchorSwitch"],
-      child: [this.keycaps, "keycaps-primaryMatrix-anchorSwitch"],
+      child: [this.keycaps, "primaryMatrix-anchorSwitch"],
       mirror: false,
       rotationFromNormal: 0,
     });
