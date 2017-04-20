@@ -13,10 +13,10 @@ function getParameterDefinitions() {
       initial: "left",
     },
     {
-      name: "part",
+      name: "renderedPart",
       type: "choice",
-      values: ["switchPlate", "base"],
-      captions: ["Switch Plate", "Base"],
+      values: ["switchPlate", "base", "full"],
+      captions: ["Switch Plate", "Base", "Full"],
       caption: "Part to render",
       initial: "switchPlate",
     },
@@ -55,12 +55,14 @@ function getParameterDefinitions() {
 
 function main(params) {
   include("extensions/csg.js");
+  include("extensions/cag.js");
 
   var plateParams = {};
   var plateParamNames = [
     "displayKeyCapsForDebugging",
     "addCutoutForHDMIConnector",
     "addCutoutForUSBConnector",
+    "renderedPart",
   ];
   for (var i = 0; i < plateParamNames.length; ++i) {
     plateParams[plateParamNames[i]] = params[plateParamNames[i]];
