@@ -24,8 +24,11 @@ class _CSGDependencyGraph {
       }
       return errors;
     }, []);
+    if (opts.parent[0] === opts.child[0]) {
+      optsErrors.push("Expected <parent> and <child> nodes to be distinct");
+    }
     if (optsErrors.length > 0) {
-      throw new Error(optsErrors.join(". "));
+      throw new Error(optsErrors.join(". ") + ".");
     }
 
     this.edgesByKey.set(key, new CSGDependencyGraphEdge(
@@ -36,8 +39,6 @@ class _CSGDependencyGraph {
         rotationFromNormal: opts.rotationFromNormal,
       }
     ));
-
-    // TODO only allow one parent per child
   }
 
   nodeFor(object) {
@@ -54,6 +55,16 @@ class _CSGDependencyGraph {
   }
 
   nodeDidChangeObject(node, opts={old: null, "new": null}) {
+    var optsErrors = ["old", "new"].reduce(function(errors, key) {
+      if (!opts[key]) {
+        errors.push("Expected <" + key + "> to be present");
+      }
+      return errors;
+    }, []);
+    if (optsErrors.length > 0) {
+      throw new Error(optsErrors.join(". ") + ".");
+    }
+
     this.nodesByObject.delete(opts.old);
     this.nodesByObject.set(opts["new"], node);
   }
@@ -104,7 +115,7 @@ class _CSGDependencyGraph {
 class _CSGDependencyGraphNode {
   constructor(dependencyGraph, object) {
     this.dependencyGraph = dependencyGraph;
-    this.object = object;
+    this._object = object;
   }
 
   get object() {
