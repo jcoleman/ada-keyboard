@@ -1,0 +1,37 @@
+{
+  "name": "ada-keyboard",
+  "version": "1.0.0",
+  "description": "Column-staggered split keyboard with sane thumb clusters",
+  "main": "case/main.jscad",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jcoleman/ada-keyboard.git"
+  },
+  "keywords": [
+    "keyboard",
+    "jscad",
+    "cad",
+    "split-keyboard",
+    "ergonomic",
+    "columnar",
+    "ortholinear"
+  ],
+  "author": "James Coleman",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jcoleman/ada-keyboard/issues"
+  },
+  "homepage": "https://github.com/jcoleman/ada-keyboard#readme",
+  "devDependencies": {
+    "jest": "^19.0.2"
+  },
+  "dependencies": {
+    "openjscad": "https://github.com/Spiritdude/OpenJSCAD.org.git#dev"
+  }
+}
