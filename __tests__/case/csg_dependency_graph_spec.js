@@ -203,3 +203,25 @@ describe('CSGDependencyGraph', () => {
     });
   });
 });
+
+describe('CSGDependencyGraphEdge', () => {
+  describe('#resolve', () => {
+    it('updates the object-to-node mapping in the graph with graph#nodeDidChangeObject', () => {
+      const graph = new CSGLayoutDependencyGraph();
+      const parent = graph.nodeFor(new CSG());
+      parent.object.properties.connector = new CSG.Connector(new CSG.Vector3D([0, 0, 0]), [0, 0, 1], [0, 1, 0]);
+      const child = graph.nodeFor(new CSG());
+      child.object.properties.connector = new CSG.Connector(new CSG.Vector3D([5, 5, 5]), [0, 0, 1], [0, 1, 0]);
+      graph.addConnection('key', {parent: [parent, 'connector'], child: [child, 'connector']});
+
+      const nodeDidChangeObject = graph.nodeDidChangeObject;
+      graph.nodeDidChangeObject = jest.fn((node, opts) => {
+        nodeDidChangeObject.apply(graph, [node, opts]);
+      });
+
+      graph.edgesByKey.get('key').resolve();
+
+      expect(graph.nodeDidChangeObject).toHaveBeenCalled();
+    });
+  });
+});

@@ -123,7 +123,7 @@ class _CSGDependencyGraphNode {
   }
 
   set object(object) {
-    this.dependencyGraph.nodeDidChangeObject({old: this.object, "new": object});
+    this.dependencyGraph.nodeDidChangeObject(this, {old: this.object, "new": object});
     return this._object = object;
   }
 }
