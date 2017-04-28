@@ -1,8 +1,3 @@
-const register = require('babel-register');
-register({
-  ignore: /node_modules\/(?!openjscad)/,
-});
-
 // const {isAbsolute, resolve} = require('path');
 // const oscad = require('@jscad/scad-api').oscad;
 const convertToBlob = require('openjscad/src/io/convertToBlob').convertToBlob;
