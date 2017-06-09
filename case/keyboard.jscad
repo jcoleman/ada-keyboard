@@ -2,7 +2,7 @@ include("constants.jscad");
 include("switch_matrix.jscad");
 include("csg_dependency_graph.jscad");
 
-class _Keyboard {
+class Keyboard {
   constructor(opts={
     displayKeyCapsForDebugging: false,
     addCutoutForHDMIConnector: true,
@@ -354,6 +354,9 @@ class _Keyboard {
   }
 }
 
-// Shim since OpenJSCAD's `include` eval's the code and classes
-// inside an eval scope are not defined outside of that scope.
-Keyboard = _Keyboard;
+if (typeof(self) == "object" && typeof(exports) == "undefined") {
+  // Shim since OpenJSCAD's `include` eval's the code and classes
+  // inside an eval scope are not defined outside of that scope.
+  var exports = self;
+}
+exports.Keyboard = Keyboard;

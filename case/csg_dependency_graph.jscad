@@ -1,4 +1,4 @@
-class _CSGDependencyGraph {
+class CSGDependencyGraph {
   constructor() {
     this.edgesByKey = new Map();
     this.nodesByObject = new Map();
@@ -112,7 +112,7 @@ class _CSGDependencyGraph {
   }
 }
 
-class _CSGDependencyGraphNode {
+class CSGDependencyGraphNode {
   constructor(dependencyGraph, object) {
     this.dependencyGraph = dependencyGraph;
     this._object = object;
@@ -163,7 +163,10 @@ class CSGDependencyGraphEdge {
   }
 }
 
-// Shim since OpenJSCAD's `include` eval's the code and classes
-// inside an eval scope are not defined outside of that scope.
-CSGDependencyGraph = _CSGDependencyGraph;
-CSGDependencyGraphNode = _CSGDependencyGraphNode;
+if (typeof(self) == "object" && typeof(exports) == "undefined") {
+  // Shim since OpenJSCAD's `include` eval's the code and classes
+  // inside an eval scope are not defined outside of that scope.
+  var exports = self;
+}
+exports.CSGDependencyGraph = CSGDependencyGraph;
+exports.CSGDependencyGraphNode = CSGDependencyGraphNode;

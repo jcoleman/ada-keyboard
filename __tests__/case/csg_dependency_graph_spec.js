@@ -1,7 +1,8 @@
-require("../../case/csg_dependency_graph.jscad")
-var jscad = require("@jscad/csg")
-CSG = jscad.CSG
-CAG = jscad.CAG
+const {CSGDependencyGraph, CSGDependencyGraphNode} = require("../../case/csg_dependency_graph.jscad");
+
+const jscad = require("@jscad/csg");
+global.CSG = jscad.CSG;
+global.CAG = jscad.CAG;
 
 describe('CSGDependencyGraph', () => {
   describe('#nodeFor', () => {
