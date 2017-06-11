@@ -52,8 +52,6 @@ exports.generateOutputData = function(params, options) {
       resolve(source)
     } else {
       const callback = (err, result) => {
-        console.log("entering callback in generateOoutputData")
-
         if (!err) {
           return resolve(result)
         }
