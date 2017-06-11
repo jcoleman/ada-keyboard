@@ -15,7 +15,7 @@ class Keyboard {
 
     this._buildSwitchMatrices();
 
-    this.csgDependencyTree = new CSGDependencyGraph();
+    this.csgDependencyTree = new CSGLayoutDependencyGraph();
 
     var plateCSG = this.primaryMatrix.plate.object.union(this.thumbMatrix.plate.object);
     var cutoutCSG = this.primaryMatrix.cutout.object.union(this.thumbMatrix.cutout.object);
@@ -292,7 +292,7 @@ class Keyboard {
   }
 
   _buildSwitchMatrices() {
-    var csgDependencyTree = new CSGDependencyGraph();
+    var csgDependencyTree = new CSGLayoutDependencyGraph();
 
     this.primaryMatrix = new SwitchMatrix({
       name: "primary",

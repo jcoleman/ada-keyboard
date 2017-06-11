@@ -1,4 +1,9 @@
-const {CSGDependencyGraph, CSGDependencyGraphNode} = require("../../case/csg_dependency_graph.jscad");
+const {
+  CSGDependencyGraph,
+  CSGLayoutDependencyGraph,
+  CSGDependencyGraphEdge,
+  CSGDependencyGraphNode,
+} = require("../../case/csg_dependency_graph.jscad");
 
 const jscad = require("@jscad/csg");
 global.CSG = jscad.CSG;
@@ -111,10 +116,9 @@ describe('CSGDependencyGraph', () => {
     it('throws an error if <parent> and <child> are the same', () => {
       const graph = new CSGDependencyGraph();
       const node = graph.nodeFor(new CSG());
-      node.object.properties.connector = new CSG.Connector(new CSG.Vector3D([0, 0, 0]), [0, 0, 1], [0, 1, 0]);
 
       expect(() => {
-        graph.addConnection('key', {parent: [node, 'connector'], child: [node, 'connector']});
+        graph.addConnection('key', {parent: node, child: node});
       }).toThrow("Expected <parent> and <child> nodes to be distinct.");
     });
   });
@@ -124,24 +128,23 @@ describe('CSGDependencyGraph', () => {
     beforeEach(() => {
       graph = new CSGDependencyGraph();
       parent = graph.nodeFor(new CSG());
-      parent.object.properties.connector = new CSG.Connector(new CSG.Vector3D([0, 0, 0]), [0, 0, 1], [0, 1, 0]);
       child = graph.nodeFor(new CSG());
-      child.object.properties.connector = new CSG.Connector(new CSG.Vector3D([5, 5, 5]), [0, 0, 1], [0, 1, 0]);
     });
 
     it('calls resolve on a single edge', () => {
-      graph.addConnection('key', {parent: [parent, 'connector'], child: [child, 'connector']});
-      const edge = graph.edgesByKey.get('key');
-      edge.resolve = jest.fn();
+      const edge = new CSGDependencyGraphEdge(parent, child, {resolve: jest.fn()});
+      graph.addConnection('key', {parent: parent, child: child, edge: edge});
 
       graph.resolve();
 
-      expect(edge.resolve).toHaveBeenCalled();
+      expect(edge.options.resolve).toHaveBeenCalled();
     });
 
     it('throws an error if there is a circular dependency', () => {
-      graph.addConnection('edge1', {parent: [parent, 'connector'], child: [child, 'connector']});
-      graph.addConnection('edge2', {parent: [child, 'connector'], child: [parent, 'connector']});
+      const edge1 = new CSGDependencyGraphEdge(parent, child, {resolve: jest.fn()});
+      graph.addConnection('edge1', {parent: parent, child: child, edge: edge1});
+      const edge2 = new CSGDependencyGraphEdge(child, parent, {resolve: jest.fn()});
+      graph.addConnection('edge2', {parent: child, child: parent, edge: edge2});
 
       expect(() => {
         graph.resolve();
@@ -149,16 +152,13 @@ describe('CSGDependencyGraph', () => {
     });
 
     it('resolves edges "node A <edge 1> node B <edge 2> node C"  in order', () => {
-      const grandchild = graph.nodeFor(new CSG());
-      grandchild.object.properties.connector = new CSG.Connector(new CSG.Vector3D([5, 5, 5]), [0, 0, 1], [0, 1, 0]);
-
-      graph.addConnection('edge 2', {parent: [child, 'connector'], child: [grandchild, 'connector']});
-      graph.addConnection('edge 1', {parent: [parent, 'connector'], child: [child, 'connector']});
-
       const resolveCalls = [];
-      graph.edgesByKey.forEach((edge, key) => {
-        edge.resolve = jest.fn(() => resolveCalls.push(key));
-      });
+
+      const grandchild = graph.nodeFor(new CSG());
+      const edge2 = new CSGDependencyGraphEdge(child, grandchild, {resolve: () => resolveCalls.push("edge 2")});
+      graph.addConnection('edge 2', {parent: child, child: grandchild, edge: edge2});
+      const edge1 = new CSGDependencyGraphEdge(parent, child, {resolve: () => resolveCalls.push("edge 1")});
+      graph.addConnection('edge 1', {parent: parent, child: child, edge: edge1});
 
       graph.resolve();
 
@@ -166,16 +166,13 @@ describe('CSGDependencyGraph', () => {
     });
 
     it('resolves multiple children of a parent', () => {
-      const otherChild = graph.nodeFor(new CSG());
-      otherChild.object.properties.connector = new CSG.Connector(new CSG.Vector3D([5, 5, 5]), [0, 0, 1], [0, 1, 0]);
-
-      graph.addConnection('edge 2', {parent: [parent, 'connector'], child: [otherChild, 'connector']});
-      graph.addConnection('edge 1', {parent: [parent, 'connector'], child: [child, 'connector']});
-
       const resolveCalls = [];
-      graph.edgesByKey.forEach((edge, key) => {
-        edge.resolve = jest.fn(() => resolveCalls.push(key));
-      });
+
+      const otherChild = graph.nodeFor(new CSG());
+      const edge2 = new CSGDependencyGraphEdge(parent, otherChild, {resolve: () => resolveCalls.push("edge 2")});
+      graph.addConnection('edge 2', {parent: parent, child: otherChild, edge: edge2});
+      const edge1 = new CSGDependencyGraphEdge(parent, child, {resolve: () => resolveCalls.push("edge 1")});
+      graph.addConnection('edge 1', {parent: parent, child: child, edge: edge1});
 
       graph.resolve();
 
@@ -183,19 +180,20 @@ describe('CSGDependencyGraph', () => {
     });
 
     it('resolves multiple direct parents of a single child before descendants of that child', () => {
-      const otherParent = graph.nodeFor(new CSG());
-      otherParent.object.properties.connector = new CSG.Connector(new CSG.Vector3D([5, 5, 5]), [0, 0, 1], [0, 1, 0]);
-      const grandchild = graph.nodeFor(new CSG());
-      grandchild.object.properties.connector = new CSG.Connector(new CSG.Vector3D([5, 5, 5]), [0, 0, 1], [0, 1, 0]);
-
-      graph.addConnection('descendant', {parent: [child, 'connector'], child: [grandchild, 'connector']});
-      graph.addConnection('parent 2', {parent: [parent, 'connector'], child: [child, 'connector']});
-      graph.addConnection('parent 1', {parent: [otherParent, 'connector'], child: [child, 'connector']});
-
       const resolveCalls = [];
-      graph.edgesByKey.forEach((edge, key) => {
-        edge.resolve = jest.fn(() => resolveCalls.push(key));
-      });
+
+      const otherParent = graph.nodeFor(new CSG());
+      const grandchild = graph.nodeFor(new CSG());
+
+      graph.addConnection('descendant', {parent: child, child: grandchild, edge:
+        new CSGDependencyGraphEdge(child, grandchild, {resolve: () => resolveCalls.push("descendant")},
+      )});
+      graph.addConnection('parent 2', {parent: parent, child: child, edge:
+        new CSGDependencyGraphEdge(parent, child, {resolve: () => resolveCalls.push("parent 2")},
+      )});
+      graph.addConnection('parent 1', {parent: otherParent, child: child, edge:
+        new CSGDependencyGraphEdge(otherParent, child, {resolve: () => resolveCalls.push("parent 1")},
+      )});
 
       graph.resolve();
 
@@ -207,8 +205,57 @@ describe('CSGDependencyGraph', () => {
 
 describe('CSGDependencyGraphEdge', () => {
   describe('#resolve', () => {
-    it('updates the object-to-node mapping in the graph with graph#nodeDidChangeObject', () => {
+    it('calls the provided resolution function', () => {
       const graph = new CSGDependencyGraph();
+      const parent = graph.nodeFor(new CSG());
+      const child = graph.nodeFor(new CSG());
+
+      const resolveFn = jest.fn()
+      const edge = new CSGDependencyGraphEdge(parent, child, {resolve: resolveFn});
+      edge.resolve();
+
+      expect(resolveFn.mock.calls).toEqual([[edge]]);
+    });
+  });
+});
+
+describe('CSGLayoutDependencyGraph', () => {
+  describe('#addConnection', () => {
+    it('throws an error if the parent and child arguments are not arrays', () => {
+      const graph = new CSGLayoutDependencyGraph();
+      const node = graph.nodeFor(new CSG());
+
+      expect(() => {
+        graph.addConnection('key', {parent: null, child: null});
+      }).toThrow("Expected <parent> to be an array containing [node, property connector name]. Expected <child> to be an array containing [node, property connector name].");
+    });
+
+    it('throws an error if the parent and child arguments are not arrays of length 2', () => {
+      const graph = new CSGLayoutDependencyGraph();
+      const node = graph.nodeFor(new CSG());
+
+      expect(() => {
+        graph.addConnection('key', {parent: [], child: []});
+      }).toThrow("Expected <parent> to be an array containing [node, property connector name]. Expected <child> to be an array containing [node, property connector name].");
+    });
+  });
+
+  describe('#resolve', () => {
+    it('connects the two objects so they have the correct layout', () => {
+      const graph = new CSGLayoutDependencyGraph();
+      const parent = graph.nodeFor(CSG.cube({radius: [5, 5, 5]}));
+      parent.object.properties.connector = new CSG.Connector(new CSG.Vector3D([0, 0, 0]), [0, 0, 1], [0, 1, 0]);
+      const child = graph.nodeFor(CSG.cube({radius: [5, 5, 5]}));
+      child.object.properties.connector = new CSG.Connector(new CSG.Vector3D([5, 5, 5]), [0, 0, 1], [0, 1, 0]);
+      graph.addConnection('key', {parent: [parent, 'connector'], child: [child, 'connector']});
+
+      graph.resolve();
+
+      expect(child.object.properties.connector.point).toEqual(new CSG.Vector3D([0, 0, 0]));
+    });
+
+    it('updates the object-to-node mapping in the graph with graph#nodeDidChangeObject', () => {
+      const graph = new CSGLayoutDependencyGraph();
       const parent = graph.nodeFor(new CSG());
       parent.object.properties.connector = new CSG.Connector(new CSG.Vector3D([0, 0, 0]), [0, 0, 1], [0, 1, 0]);
       const child = graph.nodeFor(new CSG());
