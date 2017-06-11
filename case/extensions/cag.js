@@ -1,4 +1,4 @@
-if (CAG.hasBeenExtendedForAdaKeyboard) {
+if (!CAG.hasBeenExtendedForAdaKeyboard) {
   CAG.hasBeenExtendedForAdaKeyboard = true;
 
   CAG.prototype.transformWithoutProperties = CAG.prototype.transform;

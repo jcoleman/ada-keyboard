@@ -1,4 +1,4 @@
-if (CSG.hasBeenExtendedForAdaKeyboard) {
+if (!CSG.hasBeenExtendedForAdaKeyboard) {
   CSG.hasBeenExtendedForAdaKeyboard = true;
 
   CSG.prototype.getBoundsCenter = function() {
