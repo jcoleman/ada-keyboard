@@ -1,6 +1,7 @@
 const {
   CSGDependencyGraph,
   CSGLayoutDependencyGraph,
+  CSGCombinationDependencyGraph,
   CSGDependencyGraphEdge,
   CSGDependencyGraphNode,
 } = require("../../case/csg_dependency_graph.jscad");
@@ -11,30 +12,52 @@ global.CAG = jscad.CAG;
 
 describe('CSGDependencyGraph', () => {
   describe('#nodeFor', () => {
-    it('throws an error if passed a random object', () => {
-      const graph = new CSGDependencyGraph();
+    describe('arguments', () => {
+      it('throws an error if passed a random object', () => {
+        const graph = new CSGDependencyGraph();
 
-      expect(() => {
-        graph.nodeFor({});
-      }).toThrow("Expected object to be instance of CSG or CAG.");
-    });
+        expect(() => {
+          graph.nodeFor({});
+        }).toThrow("Expected object to be instance of CSG or CAG.");
+      });
 
-    it('accepts a CSG object', () => {
-      const graph = new CSGDependencyGraph();
-      const csg = new CSG();
+      it('accepts a CSG object', () => {
+        const graph = new CSGDependencyGraph();
+        const csg = new CSG();
 
-      expect(() => {
-        graph.nodeFor(csg);
-      }).not.toThrow();
-    });
+        expect(() => {
+          graph.nodeFor(csg);
+        }).not.toThrow();
+      });
 
-    it('accepts a CAG object', () => {
-      const graph = new CSGDependencyGraph();
-      const cag = new CAG();
+      it('accepts a CAG object', () => {
+        const graph = new CSGDependencyGraph();
+        const cag = new CAG();
 
-      expect(() => {
-        graph.nodeFor(cag);
-      }).not.toThrow();
+        expect(() => {
+          graph.nodeFor(cag);
+        }).not.toThrow();
+      });
+
+      it('throws an error if passed a node from a different graph', () => {
+        const originalGraph = new CSGDependencyGraph();
+        const originalNode = originalGraph.nodeFor(new CSG());
+        const newGraph = new CSGDependencyGraph();
+
+        expect(() => {
+          newGraph.nodeFor(originalNode);
+        }).toThrow("Expected object to be instance of CSG or CAG.");
+      });
+
+      it('accepts a node from a different graph if explicitly overridden', () => {
+        const originalGraph = new CSGDependencyGraph();
+        const originalNode = originalGraph.nodeFor(new CSG());
+        const newGraph = new CSGDependencyGraph();
+
+        expect(() => {
+          newGraph.nodeFor(originalNode, {wrapExistingNode: true});
+        }).not.toThrow();
+      });
     });
 
     it('returns a node that wraps the object', () => {
@@ -203,6 +226,38 @@ describe('CSGDependencyGraph', () => {
   });
 });
 
+describe('CSGDependencyGraphNode', () => {
+  describe('#object', () => {
+    it('returns the CSG object passed at construction', () => {
+      const csg = new CSG();
+      const node = new CSGDependencyGraphNode(null, csg);
+      expect(node.object).toBe(csg);
+    });
+
+    it('returns the CSG object after it has be set manually', () => {
+      const graph = new CSGDependencyGraph();
+      const originalCSG = new CSG();
+      const node = graph.nodeFor(originalCSG);
+
+      const newCSG = new CSG();
+      node.object = newCSG;
+
+      expect(node.object).not.toBe(originalCSG);
+      expect(node.object).toBe(newCSG);
+    });
+
+    it('returns the CSG object from a wrapped node', () => {
+      const graph = new CSGDependencyGraph();
+      const csg = new CSG();
+      const originalNode = graph.nodeFor(csg);
+
+      const wrappingNode = new CSGDependencyGraphNode(null, originalNode);
+
+      expect(wrappingNode.object).toBe(csg);
+    });
+  });
+});
+
 describe('CSGDependencyGraphEdge', () => {
   describe('#resolve', () => {
     it('calls the provided resolution function', () => {
@@ -261,6 +316,82 @@ describe('CSGLayoutDependencyGraph', () => {
       const child = graph.nodeFor(new CSG());
       child.object.properties.connector = new CSG.Connector(new CSG.Vector3D([5, 5, 5]), [0, 0, 1], [0, 1, 0]);
       graph.addConnection('key', {parent: [parent, 'connector'], child: [child, 'connector']});
+
+      const nodeDidChangeObject = graph.nodeDidChangeObject;
+      graph.nodeDidChangeObject = jest.fn((node, opts) => {
+        nodeDidChangeObject.apply(graph, [node, opts]);
+      });
+
+      graph.edgesByKey.get('key').resolve();
+
+      expect(graph.nodeDidChangeObject).toHaveBeenCalled();
+    });
+  });
+});
+
+describe('CSGCombinationDependencyGraph', () => {
+  describe('#resolve', () => {
+    it('unions two objects', () => {
+      const graph = new CSGCombinationDependencyGraph();
+      const parent = graph.nodeFor(CSG.cube({radius: [5, 5, 5]}));
+      const child = graph.nodeFor(
+        CSG.cube({radius: [5, 5, 5]}).translate([0, 0, 5])
+      );
+      graph.addConnection('key', {parent: parent, child: child, operation: "union"});
+
+      graph.resolve();
+
+      expect(child.object.getBounds()).toEqual([
+        new CSG.Vector3D([-5, -5, -5]),
+        new CSG.Vector3D([5, 5, 10])
+      ]);
+    });
+
+    it('subtracts two objects', () => {
+      const graph = new CSGCombinationDependencyGraph();
+      const minuend = graph.nodeFor(CSG.cube({radius: [5, 5, 10]}));
+      const subtrahend = graph.nodeFor(
+        CSG.cube({radius: [5, 5, 5]}).translate([0, 0, 5])
+      );
+      // Perhaps unintuitively the parent is the subtrahend and the
+      // minuend is the child; even though you'd naturally think of
+      // this as `parent - child`, it has to be the `child - parent`
+      // since otherwise the result (which is always stored in the
+      // child) rarely, if ever, makes sense for use in future
+      // operations.
+      graph.addConnection('key', {parent: subtrahend, child: minuend, operation: "subtract"});
+
+      graph.resolve();
+
+      expect(minuend.object.getBounds()).toEqual([
+        new CSG.Vector3D([-5, -5, -10]),
+        new CSG.Vector3D([5, 5, 0])
+      ]);
+    });
+
+    it('intersects two objects', () => {
+      const graph = new CSGCombinationDependencyGraph();
+      const parent = graph.nodeFor(
+        CSG.cube({radius: [5, 5, 10]}).translate([0, 0, -5])
+      );
+      const child = graph.nodeFor(
+        CSG.cube({radius: [5, 5, 10]}).translate([0, 0, 5])
+      );
+      graph.addConnection('key', {parent: parent, child: child, operation: "intersect"});
+
+      graph.resolve();
+
+      expect(child.object.getBounds()).toEqual([
+        new CSG.Vector3D([-5, -5, -5]),
+        new CSG.Vector3D([5, 5, 5])
+      ]);
+    });
+
+    it('updates the object-to-node mapping in the graph with graph#nodeDidChangeObject', () => {
+      const graph = new CSGCombinationDependencyGraph();
+      const parent = graph.nodeFor(new CSG());
+      const child = graph.nodeFor(new CSG());
+      graph.addConnection('key', {parent: parent, child: child, operation: "union"});
 
       const nodeDidChangeObject = graph.nodeDidChangeObject;
       graph.nodeDidChangeObject = jest.fn((node, opts) => {

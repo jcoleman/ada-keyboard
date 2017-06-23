@@ -16,6 +16,7 @@ class Keyboard {
     this._buildSwitchMatrices();
 
     this.csgDependencyTree = new CSGLayoutDependencyGraph();
+    this.combiningGraph = new CSGCombinationDependencyGraph();
 
     var plateCSG = this.primaryMatrix.plate.object.union(this.thumbMatrix.plate.object);
     var cutoutCSG = this.primaryMatrix.cutout.object.union(this.thumbMatrix.cutout.object);
@@ -24,6 +25,8 @@ class Keyboard {
     var switchPlateCSG = plateCSG.subtract(switchHolesCSG);
 
     this.switchPlate = this.csgDependencyTree.nodeFor(switchPlateCSG);
+    this.combiningGraph.nodeFor(this.switchPlate, {wrapExistingNode: true});
+
     this._addSpacer(spacerCSG);
 
     if (this.displayKeyCapsForDebugging) {
@@ -40,13 +43,19 @@ class Keyboard {
   }
 
   buildCSG() {
+    // We can't resolve the combination graph until after the layout graph is finalized.
+    this.csgDependencyTree.resolve();
+    this.combiningGraph.resolve();
+
+    const combinedSwitchPart = this.combiningGraph.nodeFor(this.switchPlate, {wrapExistingNode: true});
+
     if (this.renderedPart == "switchPlate") {
-      return this._buildSwitchPlaceCSG();
+      return combinedSwitchPart.object;
     } else if (this.renderedPart == "base") {
       return this._buildBottomCaseCSG();
     } else if (this.renderedPart == "full") {
       var base = this._buildBottomCaseCSG();
-      var switchPlate = this._buildSwitchPlaceCSG();
+      var switchPlate = combinedSwitchPart.object;
       switchPlate = switchPlate.connectTo(
         switchPlate.properties["primaryMatrix-anchorSwitch"],
         base.properties["primaryMatrix-anchorSwitch"],
@@ -56,28 +65,6 @@ class Keyboard {
     } else {
       throw new Error("Unknown <renderedPart> option: " + this.renderedPart);
     }
-  }
-
-  _buildSwitchPlaceCSG() {
-    this.csgDependencyTree.resolve();
-
-    var csg = this.spacer.object.union(this.switchPlate.object);
-
-    if (this.displayKeyCapsForDebugging) {
-      csg = csg.union(this.keycaps.object);
-    }
-
-    if (this.addCutoutForHDMIConnector) {
-      csg = csg.subtract(this.hdmiCutout.object);
-    }
-
-    if (this.addCutoutForUSBConnector) {
-      csg = csg.subtract(this.usbCutout.object);
-    }
-
-    // TODO: split CSGDependencyTree class in CSGLayoutDependencyTree and CSG<union/subtraction/intersection operation>DependencyTree
-    // so that the above isn't necessary.
-    return csg;
   }
 
   _buildBottomCaseCSG() {
@@ -202,6 +189,12 @@ class Keyboard {
       mirror: false,
       rotationFromNormal: 0,
     });
+
+    this.combiningGraph.addConnection("spacer-to-switchPlate", {
+      parent: this.combiningGraph.nodeFor(this.spacer, {wrapExistingNode: true}),
+      child: this.combiningGraph.nodeFor(this.switchPlate, {wrapExistingNode: true}),
+      operation: "union",
+    });
   }
 
   _addKeycaps() {
@@ -213,6 +206,12 @@ class Keyboard {
       child: [this.keycaps, "primaryMatrix-anchorSwitch"],
       mirror: false,
       rotationFromNormal: 0,
+    });
+
+    this.combiningGraph.addConnection("keycaps-to-switchPlate", {
+      parent: this.combiningGraph.nodeFor(this.keycaps, {wrapExistingNode: true}),
+      child: this.combiningGraph.nodeFor(this.switchPlate, {wrapExistingNode: true}),
+      operation: "union",
     });
   }
 
@@ -240,6 +239,12 @@ class Keyboard {
       child: [this.hdmiCutout, "hdmiCutoutBottomRight"],
       mirror: false,
       rotationFromNormal: 0,
+    });
+
+    this.combiningGraph.addConnection("hdmiCutout-to-spacer", {
+      parent: this.combiningGraph.nodeFor(this.hdmiCutout, {wrapExistingNode: true}),
+      child: this.combiningGraph.nodeFor(this.spacer, {wrapExistingNode: true}),
+      operation: "subtract",
     });
   }
 
@@ -288,6 +293,12 @@ class Keyboard {
       child: [this.usbCutout, "usbCutoutBottomRight"],
       mirror: false,
       rotationFromNormal: usbCutoutAngle,
+    });
+
+    this.combiningGraph.addConnection("usbCutout-to-spacer", {
+      parent: this.combiningGraph.nodeFor(this.usbCutout, {wrapExistingNode: true}),
+      child: this.combiningGraph.nodeFor(this.spacer, {wrapExistingNode: true}),
+      operation: "subtract",
     });
   }
 

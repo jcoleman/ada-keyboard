@@ -44,8 +44,11 @@ class CSGDependencyGraph {
     this.edgesByKey.set(key, opts.edge);
   }
 
-  nodeFor(object) {
-    if (!((object instanceof CSG) || (object instanceof CAG))) {
+  nodeFor(object, opts={wrapExistingNode: false}) {
+    if (
+      !((object instanceof CSG) || (object instanceof CAG))
+      && !(object instanceof CSGDependencyGraphNode && opts.wrapExistingNode)
+    ) {
       throw new Error("Expected object to be instance of CSG or CAG.");
     }
 
@@ -162,6 +165,72 @@ class CSGLayoutDependencyGraph extends CSGDependencyGraph {
   }
 }
 
+// Typically you'd expect a tree to be structured like:
+//
+//          A
+//        /   \
+//      <op> <op>
+//       /     \
+//      B       C
+//
+// with B and C both dependent on A but as separately
+// useful result values.
+//
+// For combination operations, however, the tree tends to be
+// inverted so that it's structured like:
+//
+//      B       C
+//       \     /
+//      <op> <op>
+//        \   /
+//          A
+//
+// with A dependent on both B and C because you want one
+// final result value.
+class CSGCombinationDependencyGraph extends CSGDependencyGraph {
+  constructor(opts = {}) {
+    super(Object.assign({}, opts, {
+      resolveEdge: (edge) => {
+        // TODO: handle subtree
+        const operation = edge.options.operation;
+        var updated;
+        if (operation == "subtract") {
+          // Subtract operations are special because of the inverted
+          // nature of the tree.
+          updated = edge.child.object[operation](edge.parent.object);
+        } else {
+          // TODO: for some reason if we do the operations with args
+          // (child, parent) instead of (parent, child) there are slight
+          // but visible differences in output even though they should
+          // be conceptually commuative.
+          updated = edge.parent.object[operation](edge.child.object);
+        }
+        edge.child.object = updated;
+      }
+    }));
+  }
+
+  addConnection(key, opts={
+    parent: null, // <node>
+    child: null, // <node>
+    operation: null, // "intersect", "union", or "subtract"
+  }) {
+    if (!["intersect", "union", "subtract"].includes(opts.operation)) {
+      throw new Error("Expected <operation> to be 'intersect', 'union', or 'subtract'");
+    }
+    const edge = new CSGDependencyGraphEdge(
+      opts.parent,
+      opts.child,
+      {
+        resolve: this.resolveEdge,
+        operation: opts.operation,
+      }
+    );
+
+    super.addConnection(key, {parent: opts.parent, child: opts.child, edge: edge});
+  }
+}
+
 class CSGDependencyGraphNode {
   constructor(dependencyGraph, object) {
     this.dependencyGraph = dependencyGraph;
@@ -169,7 +238,7 @@ class CSGDependencyGraphNode {
   }
 
   get object() {
-    return this._object;
+    return this._object instanceof CSGDependencyGraphNode ? this._object.object : this._object;
   }
 
   set object(object) {
@@ -232,5 +301,6 @@ if (typeof(self) == "object" && typeof(exports) == "undefined") {
 }
 exports.CSGDependencyGraph = CSGDependencyGraph;
 exports.CSGLayoutDependencyGraph = CSGLayoutDependencyGraph;
+exports.CSGCombinationDependencyGraph = CSGCombinationDependencyGraph;
 exports.CSGDependencyGraphEdge = CSGDependencyGraphEdge;
 exports.CSGDependencyGraphNode = CSGDependencyGraphNode;
