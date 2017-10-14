@@ -1,6 +1,7 @@
 # The Ada Keyboard
 Columnar and column-staggered split mechanical keyboard with sane thumb clusters
 
+[![Build Status](https://semaphoreci.com/api/v1/jcoleman/ada-keyboard/branches/master/badge.svg)](https://semaphoreci.com/jcoleman/ada-keyboard)
 
 Toolchain
 ---
