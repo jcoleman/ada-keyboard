@@ -1,48 +1,54 @@
 class CSGDependencyGraph {
-  constructor() {
+  constructor(opts = {
+    resolveEdge: (edge) => {
+      throw new Error("Expected <resolveEdge> to be passed for construction of CSGDependencyGraph");
+    },
+  }) {
+    var errors = [];
+    if (typeof(opts.resolveEdge) !== "function") {
+      errors.push("Expected <resolveEdge> to be passed in construction of CSGDependencyGraph");
+    }
+    if (errors.length > 0) {
+      throw new Error(errors.join(". ") + ".");
+    }
+
     this.edgesByKey = new Map();
     this.nodesByObject = new Map();
+    this.resolveEdge = opts.resolveEdge;
   }
 
   addConnection(key, opts={
-    parent: [null, ""], // [<node>, <connector name>]
-    child: [null, ""], // [<node>, <connector name>]
-    mirror: false,
-    rotationFromNormal: 0,
+    parent: null, // <node>
+    child: null, // <node>
+    edge: null, // (subclass) instance of CSGDependencyGraphEdge
   }) {
     var self = this;
     if (this.edgesByKey.has(key)) {
       throw new Error("Keys must be unique");
     }
     var optsErrors = ["parent", "child"].reduce(function(errors, key) {
-      if (!(Array.isArray(opts[key]) && opts[key].length == 2)) {
-        errors.push("Expected <" + key + "> to be an array containing [node, property connector name]");
-      } else if (!(opts[key][0] instanceof CSGDependencyGraphNode)) {
+      if (!(opts[key] instanceof CSGDependencyGraphNode)) {
         errors.push("Expected <" + key + "> node to be an instance of CSGDependencyGraphNode");
-      } else if (opts[key][0].dependencyGraph !== self) {
+      } else if (opts[key].dependencyGraph !== self) {
         errors.push("Expected <" + key + "> node to have already been added to this instance of CSGDependencyGraph via <nodeForObject>");
       }
       return errors;
     }, []);
-    if (opts.parent[0] === opts.child[0]) {
+    if (opts.parent === opts.child) {
       optsErrors.push("Expected <parent> and <child> nodes to be distinct");
     }
     if (optsErrors.length > 0) {
       throw new Error(optsErrors.join(". ") + ".");
     }
 
-    this.edgesByKey.set(key, new CSGDependencyGraphEdge(
-      opts.parent,
-      opts.child,
-      {
-        mirror: opts.mirror,
-        rotationFromNormal: opts.rotationFromNormal,
-      }
-    ));
+    this.edgesByKey.set(key, opts.edge);
   }
 
-  nodeFor(object) {
-    if (!((object instanceof CSG) || (object instanceof CAG))) {
+  nodeFor(object, opts={wrapExistingNode: false}) {
+    if (
+      !((object instanceof CSG) || (object instanceof CAG))
+      && !(object instanceof CSGDependencyGraphNode && opts.wrapExistingNode)
+    ) {
       throw new Error("Expected object to be instance of CSG or CAG.");
     }
 
@@ -112,6 +118,119 @@ class CSGDependencyGraph {
   }
 }
 
+class CSGLayoutDependencyGraph extends CSGDependencyGraph {
+  constructor(opts = {}) {
+    super(Object.assign({}, opts, {
+      resolveEdge: (edge) => {
+        // TODO: handle subtree
+        var updated = edge.child.object.connectTo(
+          edge.child.object.properties[edge.childPropertyName],
+          edge.parent.object.properties[edge.parentPropertyName],
+          edge.options.mirror,
+          edge.options.rotationFromNormal
+        );
+        edge.child.object = updated;
+      }
+    }));
+  }
+
+  addConnection(key, opts={
+    parent: [null, ""], // [<node>, <connector name>]
+    child: [null, ""], // [<node>, <connector name>]
+    mirror: false,
+    rotationFromNormal: 0,
+  }) {
+    var self = this;
+    var optsErrors = ["parent", "child"].reduce(function(errors, key) {
+      if (!(Array.isArray(opts[key]) && opts[key].length == 2)) {
+        errors.push("Expected <" + key + "> to be an array containing [node, property connector name]");
+      }
+      return errors;
+    }, []);
+    if (optsErrors.length > 0) {
+      throw new Error(optsErrors.join(". ") + ".");
+    }
+
+    const edge = new CSGLayoutDependencyGraphEdge(
+      opts.parent,
+      opts.child,
+      {
+        mirror: opts.mirror,
+        rotationFromNormal: opts.rotationFromNormal,
+        resolve: this.resolveEdge,
+      }
+    );
+
+    super.addConnection(key, {parent: opts.parent[0], child: opts.child[0], edge: edge});
+  }
+}
+
+// Typically you'd expect a tree to be structured like:
+//
+//          A
+//        /   \
+//      <op> <op>
+//       /     \
+//      B       C
+//
+// with B and C both dependent on A but as separately
+// useful result values.
+//
+// For combination operations, however, the tree tends to be
+// inverted so that it's structured like:
+//
+//      B       C
+//       \     /
+//      <op> <op>
+//        \   /
+//          A
+//
+// with A dependent on both B and C because you want one
+// final result value.
+class CSGCombinationDependencyGraph extends CSGDependencyGraph {
+  constructor(opts = {}) {
+    super(Object.assign({}, opts, {
+      resolveEdge: (edge) => {
+        // TODO: handle subtree
+        const operation = edge.options.operation;
+        var updated;
+        if (operation == "subtract") {
+          // Subtract operations are special because of the inverted
+          // nature of the tree.
+          updated = edge.child.object[operation](edge.parent.object);
+        } else {
+          // TODO: for some reason if we do the operations with args
+          // (child, parent) instead of (parent, child) there are slight
+          // but visible differences in output even though they should
+          // be conceptually commuative.
+          updated = edge.parent.object[operation](edge.child.object);
+        }
+        edge.child.object = updated;
+      }
+    }));
+  }
+
+  addConnection(key, opts={
+    parent: null, // <node>
+    child: null, // <node>
+    operation: null, // "intersect", "union", or "subtract"
+  }) {
+    if (!["intersect", "union", "subtract"].includes(opts.operation)) {
+      throw new Error("Expected <operation> to be 'intersect', 'union', or 'subtract'");
+    }
+    const edge = new CSGDependencyGraphEdge(
+      opts.parent,
+      opts.child,
+      {
+        resolve: this.resolveEdge,
+        operation: opts.operation,
+      }
+    );
+
+    super.addConnection(key, {parent: opts.parent, child: opts.child, edge: edge});
+  }
+}
+
 class CSGDependencyGraphNode {
   constructor(dependencyGraph, object) {
     this.dependencyGraph = dependencyGraph;
@@ -119,7 +238,7 @@ class CSGDependencyGraphNode {
   }
 
   get object() {
-    return this._object;
+    return this._object instanceof CSGDependencyGraphNode ? this._object.object : this._object;
   }
 
   set object(object) {
@@ -129,17 +248,41 @@ class CSGDependencyGraphNode {
 }
 
 class CSGDependencyGraphEdge {
-  constructor(parent=[null, "propertyName"], child=[null, "propertyName"], opts={}) {
+  constructor(parent, child, opts={resolve: null}) {
     var self = this;
+    opts = opts || {};
 
-    this.parent = parent[0];
+    this.parent = parent;
+    this.child = child;
+    this.resolverImplementation = opts.resolve;
+    var errors = [];
+    if (typeof(opts.resolve) !== "function") {
+      errors.push("Expected <resolveEdge> to be passed in construction of CSGDependencyGraph");
+    }
+    if (errors.length > 0) {
+      throw new Error(errors.join(" "));
+    }
+    this.options = opts;
+  }
+
+  resolve() {
+    this.resolverImplementation(this);
+  }
+}
+
+class CSGLayoutDependencyGraphEdge extends CSGDependencyGraphEdge {
+  constructor(parent=[null, "propertyName"], child=[null, "propertyName"], opts={resolve: null}) {
+    super(parent[0], child[0], opts);
+
+    var self = this;
+    opts = opts || {};
+
     this.parentPropertyName = parent[1];
-    this.child = child[0];
     this.childPropertyName = child[1];
     var errors = ["parent", "child"].reduce(function(errors, argumentName) {
       var propertyName = self[argumentName + "PropertyName"];
       if (typeof propertyName !== "string") {
-        errors.push("Expected <" + propertyName + "> to be a String.");
+        errors.push("Expected <" + argumentName + "[1]> (connector property name) to be a String.");
       } else if (!self[argumentName].object.properties.hasOwnProperty(propertyName)) {
         errors.push("Tried to add connection with " + argumentName + " property <" + propertyName + "> but parent object does not contain that property.");
       }
@@ -148,18 +291,6 @@ class CSGDependencyGraphEdge {
     if (errors.length > 0) {
       throw new Error(errors.join(" "));
     }
-    this.options = opts;
-  }
-
-  resolve() {
-    // TODO: handle subtree
-    var updated = this.child.object.connectTo(
-      this.child.object.properties[this.childPropertyName],
-      this.parent.object.properties[this.parentPropertyName],
-      this.options.mirror,
-      this.options.rotationFromNormal
-    );
-    this.child.object = updated;
   }
 }
 
@@ -169,4 +300,7 @@ if (typeof(self) == "object" && typeof(exports) == "undefined") {
   var exports = self;
 }
 exports.CSGDependencyGraph = CSGDependencyGraph;
+exports.CSGLayoutDependencyGraph = CSGLayoutDependencyGraph;
+exports.CSGCombinationDependencyGraph = CSGCombinationDependencyGraph;
+exports.CSGDependencyGraphEdge = CSGDependencyGraphEdge;
 exports.CSGDependencyGraphNode = CSGDependencyGraphNode;

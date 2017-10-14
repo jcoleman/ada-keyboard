@@ -33,7 +33,7 @@ class SwitchMatrix {
     this.caseBaseRadiiFromSwitchCenters = opts.caseBaseRadiiFromSwitchCenters;
     this.caseAdditionalRadiiOffsets = opts.caseAdditionalRadiiOffsets || {};
     this.squareTopRightCorner = opts.squareTopRightCorner;
-    this.csgDependencyTree = new CSGDependencyGraph();
+    this.csgDependencyTree = new CSGLayoutDependencyGraph();
     this.matrix = [];
 
     for (var row = 0; row < this.placementMatrix.length; ++row) {
