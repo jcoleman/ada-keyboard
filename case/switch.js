@@ -1,4 +1,4 @@
-include("constants.jscad");
+include("constants.js");
 
 keyCap = function() {
   var cap = CSG.cube({

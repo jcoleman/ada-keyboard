@@ -294,13 +294,16 @@ class CSGLayoutDependencyGraphEdge extends CSGDependencyGraphEdge {
   }
 }
 
+var moduleExports;
 if (typeof(self) == "object" && typeof(exports) == "undefined") {
   // Shim since OpenJSCAD's `include` eval's the code and classes
   // inside an eval scope are not defined outside of that scope.
-  var exports = self;
+  moduleExports = self;
+} else {
+  moduleExports = exports;
 }
-exports.CSGDependencyGraph = CSGDependencyGraph;
-exports.CSGLayoutDependencyGraph = CSGLayoutDependencyGraph;
-exports.CSGCombinationDependencyGraph = CSGCombinationDependencyGraph;
-exports.CSGDependencyGraphEdge = CSGDependencyGraphEdge;
-exports.CSGDependencyGraphNode = CSGDependencyGraphNode;
+moduleExports.CSGDependencyGraph = CSGDependencyGraph;
+moduleExports.CSGLayoutDependencyGraph = CSGLayoutDependencyGraph;
+moduleExports.CSGCombinationDependencyGraph = CSGCombinationDependencyGraph;
+moduleExports.CSGDependencyGraphEdge = CSGDependencyGraphEdge;
+moduleExports.CSGDependencyGraphNode = CSGDependencyGraphNode;

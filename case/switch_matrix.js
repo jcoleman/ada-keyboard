@@ -1,6 +1,6 @@
-include("constants.jscad");
-include("switch.jscad");
-include("csg_dependency_graph.jscad");
+include("constants.js");
+include("switch.js");
+include("csg_dependency_graph.js");
 
 class SwitchMatrix {
   // Builds a matrix of key switch descriptors that are unconnected
@@ -342,9 +342,12 @@ class SwitchMatrixComponents {
   }
 }
 
+var moduleExports;
 if (typeof(self) == "object" && typeof(exports) == "undefined") {
   // Shim since OpenJSCAD's `include` eval's the code and classes
   // inside an eval scope are not defined outside of that scope.
-  var exports = self;
+  moduleExports = self;
+} else {
+  moduleExports = exports;
 }
-exports.SwitchMatrix = SwitchMatrix;
+moduleExports.SwitchMatrix = SwitchMatrix;

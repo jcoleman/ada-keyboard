@@ -1,6 +1,6 @@
-include("switch.jscad");
-include("keyboard.jscad");
-include("csg_dependency_graph.jscad");
+include("switch.js");
+include("keyboard.js");
+include("csg_dependency_graph.js");
 
 function getParameterDefinitions() {
   return [

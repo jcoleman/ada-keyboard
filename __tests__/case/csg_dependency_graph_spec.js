@@ -4,7 +4,7 @@ const {
   CSGCombinationDependencyGraph,
   CSGDependencyGraphEdge,
   CSGDependencyGraphNode,
-} = require("../../case/csg_dependency_graph.jscad");
+} = require("../../case/csg_dependency_graph.js");
 
 const jscad = require("@jscad/csg");
 global.CSG = jscad.CSG;

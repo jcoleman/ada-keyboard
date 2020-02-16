@@ -1,6 +1,6 @@
-include("constants.jscad");
-include("switch_matrix.jscad");
-include("csg_dependency_graph.jscad");
+include("constants.js");
+include("switch_matrix.js");
+include("csg_dependency_graph.js");
 
 class Keyboard {
   constructor(opts={
@@ -365,9 +365,12 @@ class Keyboard {
   }
 }
 
+var moduleExports;
 if (typeof(self) == "object" && typeof(exports) == "undefined") {
   // Shim since OpenJSCAD's `include` eval's the code and classes
   // inside an eval scope are not defined outside of that scope.
-  var exports = self;
+  moduleExports = self;
+} else {
+  moduleExports = exports;
 }
-exports.Keyboard = Keyboard;
+moduleExports.Keyboard = Keyboard;

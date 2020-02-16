@@ -2,7 +2,7 @@
   "name": "ada-keyboard",
   "version": "1.0.0",
   "description": "Column-staggered split keyboard with sane thumb clusters",
-  "main": "case/main.jscad",
+  "main": "case/main.js",
   "directories": {
     "doc": "docs"
   },
