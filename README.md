@@ -34,3 +34,15 @@ Design Goals
 - Ability to make either a truly split (two piece) _or_ a combined single piece board for travel.
 
 Eventually I'd like to also add the ability to do a more radical design like non-2d layouts (a la Kinesis Advantage, for example).
+
+# Developing
+---
+
+- [Install Yarn](https://classic.yarnpkg.com/en/docs/install/) (note: Debian/Ubuntu default packages may not be new enough; use Yarn's repo instead).
+- Run tests (uses the [Jest](https://jestjs.io/) framework) with `yarn test` or `yarn jest`. Optionally run a single file by also passing the test file path.
+
+You can use an interactive debugger in tests by adding a `debugger;` line and either:
+  - Run `node --inspect-brk node_modules/.bin/jest [test file path]`
+  - Open Chrome/Chromium to [chrome://inspect](chrome://inspect) and clicking 'Open dedicated DevTools for Node'.
+Or, for a command-line only debugger:
+  - `inode inspect node_modules/.bin/jest [test file path]`
