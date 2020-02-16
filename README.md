@@ -1,14 +1,16 @@
-# The Ada Keyboard
+# The Ada Keyboard [![Build Status](https://semaphoreci.com/api/v1/jcoleman/ada-keyboard/branches/master/badge.svg)](https://semaphoreci.com/jcoleman/ada-keyboard)
 Columnar and column-staggered split mechanical keyboard with sane thumb clusters
 
-[![Build Status](https://semaphoreci.com/api/v1/jcoleman/ada-keyboard/branches/master/badge.svg)](https://semaphoreci.com/jcoleman/ada-keyboard)
+![Assembled Photo](images/assembled_photo.jpg)
 
 Toolchain
 ---
 
 A keyboard shell is being modeling using [OpenJSCAD](http://openjscad.org) ([User Guide](https://en.wikibooks.org/wiki/OpenJSCAD_User_Guide)). The currently released version of OpenJSCAD (0.5.2) does not properly load relative `include` paths; if you're developing locally and would like to load the model consider using [my fork](https://github.com/jcoleman/OpenJSCAD.org/) ([hosted viewer](https://jcoleman.github.io/OpenJSCAD.org/)) instead.
 
-You can [view the current 3D model in the OpenJSCAD viewer](https://jcoleman.github.io/OpenJSCAD.org/#https://cdn.jsdelivr.net/gh/jcoleman/ada-keyboard/case/main.js).
+You can [view the current 3D model in the OpenJSCAD viewer](https://jcoleman.github.io/OpenJSCAD.org/#https://cdn.jsdelivr.net/gh/jcoleman/ada-keyboard/case/main.js). Without selecting any additional options, the viewer will render the switch plate as in the screenshot below.
+
+![OpenJSCAD Switch Plate Rendering](images/jscad_rendering.png)
 
 History
 ---
