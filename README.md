@@ -35,7 +35,14 @@ Design Goals
 - Removal of switches I don't use (like the bottom one on each of the two pinky columns on both sides) in favor of shifting the remaining keys in those columns to have the most frequently used being easiest to reach -- e.g., shift).
 - Ability to make either a truly split (two piece) _or_ a combined single piece board for travel.
 
-Eventually I'd like to also add the ability to do a more radical design like non-2d layouts (a la Kinesis Advantage, for example).
+Future Improvements
+---
+
+- Optional more radical non-2D layouts (a la Kinesis Advantage, for example).
+- Optional single-piece design (possibly with hinged tenting).
+- Wiring instructions.
+- PCB design.
+- Bluetooth.
 
 # Developing
 ---
