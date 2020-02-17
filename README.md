@@ -44,7 +44,7 @@ Future Improvements
 - PCB design.
 - Bluetooth.
 
-# Developing
+Developing
 ---
 
 - [Install Yarn](https://classic.yarnpkg.com/en/docs/install/) (note: Debian/Ubuntu default packages may not be new enough; use Yarn's repo instead).
