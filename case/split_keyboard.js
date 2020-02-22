@@ -2,7 +2,7 @@ include("constants.js");
 include("switch_matrix.js");
 include("csg_dependency_graph.js");
 
-class Keyboard {
+class SplitKeyboard {
   constructor(opts={
     displayKeyCapsForDebugging: false,
     addCutoutForHDMIConnector: true,
@@ -373,4 +373,4 @@ if (typeof(self) == "object" && typeof(exports) == "undefined") {
 } else {
   moduleExports = exports;
 }
-moduleExports.Keyboard = Keyboard;
+moduleExports.SplitKeyboard = SplitKeyboard;

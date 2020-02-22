@@ -4,9 +4,9 @@ const jscad = require("@jscad/csg");
 global.CSG = jscad.CSG;
 global.CAG = jscad.CAG;
 
-describe('Keyboard', () => {
+describe('SplitKeyboard', () => {
   it('builds the switch plate without blowing up', () => {
-    const promise = generateOutputData({renderedPart: 'switchPlate'}, {inputFile: "case/main.js"});
+    const promise = generateOutputData({keyboardStyle: "splitLeft", renderedPart: 'switchPlate'}, {inputFile: "case/main.js"});
     return promise.then(objects => {
       expect(objects).toBeInstanceOf(Array);
       objects.forEach(object => {
@@ -16,7 +16,7 @@ describe('Keyboard', () => {
   });
 
   it('builds the full part with the expected bounds', () => {
-    const promise = generateOutputData({renderedPart: 'full'}, {inputFile: "case/main.js"});
+    const promise = generateOutputData({keyboardStyle: "splitLeft", renderedPart: 'full'}, {inputFile: "case/main.js"});
     return promise.then(objects => {
       expect(objects).toBeInstanceOf(Array);
       expect(objects.length).toBe(1);
