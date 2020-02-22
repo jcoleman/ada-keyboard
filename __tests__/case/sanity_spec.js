@@ -42,4 +42,19 @@ describe('SplitKeyboard', () => {
       );
     });
   });
+
+  // TODO: it doesn't have any intersecting switches/keycaps.
+});
+
+
+describe('CombinedKeyboard', () => {
+  it('builds the switch plate without blowing up', () => {
+    const promise = generateOutputData({keyboardStyle: "combined", renderedPart: 'switchPlate'}, {inputFile: "case/main.js"});
+    return promise.then(objects => {
+      expect(objects).toBeInstanceOf(Array);
+      objects.forEach(object => {
+        expect(object).toBeInstanceOf(CSG);
+      });
+    });
+  });
 });

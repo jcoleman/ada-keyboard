@@ -1,5 +1,6 @@
 include("switch.js");
 include("split_keyboard.js");
+include("combined_keyboard.js");
 include("csg_dependency_graph.js");
 
 function getParameterDefinitions() {
@@ -7,10 +8,10 @@ function getParameterDefinitions() {
     {
       name: "keyboardStyle",
       type: "choice",
-      values: ["splitLeft", "splitRight"],
-      captions: ["Split: Left hand", "Split: Right hand"],
+      values: ["combined", "splitLeft", "splitRight"],
+      captions: ["Combined", "Split: Left hand", "Split: Right hand"],
       caption: "Keyboard style",
-      initial: "splitLeft",
+      initial: "combined",
     },
     {
       name: "renderedPart",
@@ -68,8 +69,14 @@ function main(params) {
     plateParams[plateParamNames[i]] = params[plateParamNames[i]];
   }
 
-  var keyboard = new SplitKeyboard(plateParams);
-  var result = keyboard.buildCSG();
+  var result;
+  if (params.keyboardStyle == "combined") {
+    var keyboard = new CombinedKeyboard(plateParams);
+    result = keyboard.buildCSG();
+  } else {
+    var keyboard = new SplitKeyboard(plateParams);
+    result = keyboard.buildCSG();
+  }
 
   if (params.keyboardStyle == "splitRight") {
     result = result.mirroredX();
@@ -100,4 +107,3 @@ function main(params) {
 
   return result;
 }
-

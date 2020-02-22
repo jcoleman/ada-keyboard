@@ -89,6 +89,8 @@ class SwitchMatrix {
       }
     }
 
+    // TODO: does this need to be optional if we're going to rotate
+    // things _before_ combining switches?
     this.csgDependencyTree.resolve();
   }
 

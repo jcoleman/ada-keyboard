@@ -35,8 +35,13 @@ switchHole = function(opts={thickness: SWITCH_PLATE_THICKNESS}) {
     notch.translate([-notchCenterOffset, 0])
   );
 
-  // Point, axis, perpendicular axis
+  // Connector Constructor: (point, axis, perpendicular axis)
   hole.properties.center = new CSG.Connector([0, 0, 0], [0, 0, 1], [0, 1, 0]);
+
+  hole.properties.topLeft = new CSG.Vector3D([-(SWITCH_HOLE_SIZE / 2), (SWITCH_HOLE_SIZE / 2, 0), plateRadius]);
+  hole.properties.topRight = new CSG.Vector3D([(SWITCH_HOLE_SIZE / 2), (SWITCH_HOLE_SIZE / 2, 0), plateRadius]);
+  hole.properties.bottomLeft = new CSG.Vector3D([-(SWITCH_HOLE_SIZE / 2), -(SWITCH_HOLE_SIZE / 2, 0), plateRadius]);
+  hole.properties.bottomRight = new CSG.Vector3D([(SWITCH_HOLE_SIZE / 2), -(SWITCH_HOLE_SIZE / 2, 0), plateRadius]);
 
   return hole;
 }
