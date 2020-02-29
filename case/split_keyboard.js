@@ -218,7 +218,7 @@ class SplitKeyboard {
   _addCutoutForHDMIConnector() {
     var spacerBounds = this.spacer.object.getBounds();
     var spacerHeight = spacerBounds[1].z - spacerBounds[0].z;
-    var depth = this.primaryMatrix.switchMatrix.spacerDepth + this.primaryMatrix.switchMatrix.caseAdditionalRadiiOffsets.exterior.top;
+    var depth = this.primaryMatrix.spacerDepth + this.primaryMatrix.caseAdditionalRadiiOffsets.exterior.top;
     var hdmiCutoutCSG = CSG.cube({radius: [15.4/2, depth / 2, spacerHeight / 2]});
     var hdmiCutoutBounds = hdmiCutoutCSG.getBounds();
     hdmiCutoutCSG.properties.hdmiCutoutBottomRight = new CSG.Connector(
@@ -251,7 +251,7 @@ class SplitKeyboard {
   _addCutoutForUSBConnector() {
     var spacerBounds = this.spacer.object.getBounds();
     var spacerHeight = spacerBounds[1].z - spacerBounds[0].z;
-    var depth = this.primaryMatrix.switchMatrix.spacerDepth + this.primaryMatrix.switchMatrix.caseAdditionalRadiiOffsets.exterior.top + 1.5;
+    var depth = this.primaryMatrix.spacerDepth + this.primaryMatrix.caseAdditionalRadiiOffsets.exterior.top + 1.5;
     var usbCutoutCSG = CSG.cube({radius: [8.1/2, depth / 2, spacerHeight / 2]});
     usbCutoutCSG = usbCutoutCSG.translate([0, 0, -usbCutoutCSG.getBounds()[0].z]);
     var usbCutoutBounds = usbCutoutCSG.getBounds();
@@ -262,7 +262,8 @@ class SplitKeyboard {
     );
 
     var usbCutoutPlateTopSide = null;
-    var primaryExteriorHull = this.primaryMatrix.switchMatrix._exteriorHull();
+    // TODO: Why is this calling an internal function?
+    var primaryExteriorHull = this.primaryMatrix._exteriorHull();
     var primaryExteriorBounds = primaryExteriorHull.getBounds();
     for (var i = 0; i < primaryExteriorHull.sides.length; ++i) {
       var side = primaryExteriorHull.sides[i];
@@ -305,7 +306,7 @@ class SplitKeyboard {
   _buildSwitchMatrices() {
     var csgDependencyTree = new CSGLayoutDependencyGraph();
 
-    this.primaryMatrix = new SwitchMatrix({
+    var primarySwitchMatrix = new SwitchMatrix({
       name: "primary",
       placementMatrix: [
         [1, 1, 1, 1, 1, 1],
@@ -320,6 +321,10 @@ class SplitKeyboard {
       anchorSwitchCoordinates: [3, 5],
       columnOffsets: [0, -4, 14, 5, -6, -5],
       rowOffsets: [],
+    });
+    this.primaryMatrix = new SwitchMatrixComponents({
+      csgDependencyTree: csgDependencyTree,
+      switchMatrix: primarySwitchMatrix,
       caseBaseRadiiFromSwitchCenters: {
         interior: 3,
         exterior: 10,
@@ -329,9 +334,9 @@ class SplitKeyboard {
         interior: {bottom: -20},
       },
       squareTopRightCorner: true,
-    }).switchMatrixComponentsForDependencyTree(csgDependencyTree);
+    });
 
-    this.thumbMatrix = new SwitchMatrix({
+    var thumbSwitchMatrix = new SwitchMatrix({
       name: "thumb",
       placementMatrix: [
         [1, 1],
@@ -339,11 +344,15 @@ class SplitKeyboard {
       ],
       columnOffsets: [],
       rowOffsets: [0, 6],
+    });
+    this.thumbMatrix = new SwitchMatrixComponents({
+      csgDependencyTree: csgDependencyTree,
+      switchMatrix: thumbSwitchMatrix,
       caseBaseRadiiFromSwitchCenters: {
         interior: 3,
         exterior: 10,
       },
-    }).switchMatrixComponentsForDependencyTree(csgDependencyTree);
+    });
 
     this.thumbMatrix.allObjectNodes.forEach(function(node) {
       var object = node.object;
