@@ -54,6 +54,6 @@ You can use an interactive debugger in tests by adding a `debugger;` line and ei
   - Run `node --inspect-brk node_modules/.bin/jest [test file path]`
   - Open Chrome/Chromium to [chrome://inspect](chrome://inspect) and clicking 'Open dedicated DevTools for Node'.
 Or, for a command-line only debugger:
-  - `inode inspect node_modules/.bin/jest [test file path]`
+  - `yarn test-debug [test file path]`
 
   Unfortunately, unlike RSpec, Jest doesn't currently support running the tests [at a given file and line number](https://github.com/facebook/jest/issues/4811). However it is possible to run matching on files (just pass the file regex to the test runner command), and it's also possible to run tests whose names match a given pattern with `-t <pattern>`.
