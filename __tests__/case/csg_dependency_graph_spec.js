@@ -144,6 +144,21 @@ describe('CSGDependencyGraph', () => {
         graph.addConnection('key', {parent: node, child: node});
       }).toThrow("Expected <parent> and <child> nodes to be distinct.");
     });
+
+    it('throws an error if <key> is duplicated', () => {
+      const graph = new CSGDependencyGraph();
+      const parent = graph.nodeFor(new CSG());
+      const child = graph.nodeFor(new CSG());
+      graph.addConnection('key123', {parent: parent , child: child});
+
+      expect(() => {
+        // TODO: It might be even more valuable to refactor the code
+        // to require that the tuple (parent, child) be unique. Also
+        // then it might be possible to avoid having a key (unless we
+        // want that just for ease of debugging).
+        graph.addConnection('key123', {parent: parent , child: child});
+      }).toThrow("Keys must be unique (<key123> already an edge)");
+    });
   });
 
   describe('#resolve', () => {
@@ -270,6 +285,16 @@ describe('CSGDependencyGraphEdge', () => {
       edge.resolve();
 
       expect(resolveFn.mock.calls).toEqual([[edge]]);
+    });
+
+    it('throws an error if the resolve argument is not a function', () => {
+      const graph = new CSGDependencyGraph();
+      const parent = graph.nodeFor(new CSG());
+      const child = graph.nodeFor(new CSG());
+
+      expect(() => {
+        new CSGDependencyGraphEdge(parent, child, {resolve: "bogus"});
+      }).toThrow("Expected <resolve> to be passed in construction of CSGDependencyGraphEdge");
     });
   });
 });

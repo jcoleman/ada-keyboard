@@ -24,7 +24,7 @@ class CSGDependencyGraph {
   }) {
     var self = this;
     if (this.edgesByKey.has(key)) {
-      throw new Error("Keys must be unique");
+      throw new Error("Keys must be unique (<" + key + "> already an edge)");
     }
     var optsErrors = ["parent", "child"].reduce(function(errors, key) {
       if (!(opts[key] instanceof CSGDependencyGraphNode)) {
@@ -257,7 +257,7 @@ class CSGDependencyGraphEdge {
     this.resolverImplementation = opts.resolve;
     var errors = [];
     if (typeof(opts.resolve) !== "function") {
-      errors.push("Expected <resolveEdge> to be passed in construction of CSGDependencyGraph");
+      errors.push("Expected <resolve> to be passed in construction of CSGDependencyGraphEdge");
     }
     if (errors.length > 0) {
       throw new Error(errors.join(" "));
