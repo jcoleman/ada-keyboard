@@ -128,6 +128,17 @@ class SwitchMatrixComponents {
     this._buildHulls();
 
     this.plate = opts.csgDependencyTree.nodeFor(this.plateCSG);
+
+    // Layout the switch plate relative to the anchor switch.
+    opts.csgDependencyTree.addConnection(this.switchMatrix.name + "Matrix-plate-to-anchorSwitch", {
+      parent: [opts.csgDependencyTree.nodeFor(this.switchMatrix.anchorDescriptor.keySwitch, {wrapExistingNode: true}), "center"],
+      child: [this.plate, this.switchMatrix.name + "Matrix-anchorSwitch"],
+      mirror: false,
+      rotationFromNormal: 0,
+    });
+
+    // Layout all of the other plate-related objects relative
+    // to the plate.
     for (var csgProperty of this.allObjectPropertyNames) {
       if (csgProperty != "plate") {
         this[csgProperty] = opts.csgDependencyTree.nodeFor(this[csgProperty + "CSG"]);
@@ -169,6 +180,10 @@ class SwitchMatrixComponents {
     } else {
       var plate = this.exteriorHullCSG.extrude({offset: [0, 0, SWITCH_PLATE_THICKNESS]});
       var anchorCenter = this.switchMatrix.anchorSwitch.properties.center.point;
+      // Since we're extruding up from z=0 but the switch hole is
+      // a radius around z=0, we use z=(SWITCH_PLATE_THICKNESS / 2)
+      // here to make the two points are equivalent relative to
+      // each piece.
       plate.properties[this.switchMatrix.name + "Matrix-anchorSwitch"] = new CSG.Connector(
         [anchorCenter.x, anchorCenter.y, SWITCH_PLATE_THICKNESS / 2],
         [0, 0, 1],
@@ -185,6 +200,10 @@ class SwitchMatrixComponents {
     } else {
       var cutout = this.interiorHullCSG.extrude({offset: [0, 0, SWITCH_PLATE_THICKNESS]});
       var anchorCenter = this.switchMatrix.anchorSwitch.properties.center.point;
+      // Since we're extruding up from z=0 but the switch hole is
+      // a radius around z=0, we use z=(SWITCH_PLATE_THICKNESS / 2)
+      // here to make the two points are equivalent relative to
+      // each piece.
       cutout.properties[this.switchMatrix.name + "Matrix-anchorSwitch"] = new CSG.Connector(
         [anchorCenter.x, anchorCenter.y, SWITCH_PLATE_THICKNESS / 2],
         [0, 0, 1],
