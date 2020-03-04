@@ -17,7 +17,6 @@ if (!CSG.hasBeenExtendedForAdaKeyboard) {
   CSG.Matrix4x4.xScaleForRotationY = function(degrees) {
     var radians = degrees * Math.PI * (1.0 / 180.0);
     var cos = Math.cos(radians);
-    var sin = Math.sin(radians);
     var els = [
       cos, 0, 0, 0,
         0, 1, 0, 0,
