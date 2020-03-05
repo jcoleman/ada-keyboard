@@ -2,7 +2,7 @@ include("constants.js");
 include("switch_matrix.js");
 include("csg_dependency_graph.js");
 
-class Keyboard {
+class SplitKeyboard {
   constructor(opts={
     displayKeyCapsForDebugging: false,
     addCutoutForHDMIConnector: true,
@@ -77,7 +77,7 @@ class Keyboard {
     // to lessen the mass of the solid.
 
     var [primaryMatrixCAGs, thumbMatrixCAGs] = [this.primaryMatrix, this.thumbMatrix].map(function(matrix) {
-      var exteriorHull = matrix.exteriorHull.object.withVerticesIn3D(0);
+      var exteriorHull = matrix.exteriorHull.object.withVerticesIn3D(-(SWITCH_PLATE_THICKNESS / 2));
 
       // Rotate the CAG in 3D space before doing any other operation because
       // we need both the bottom and top polygons to have the same X, Y values
@@ -87,6 +87,7 @@ class Keyboard {
       // Since we rotated around the center we need to translate to normalize the Z coordinates.
       // We also include the translation necessary to ensure a minimum thickness of the case.
       var topCAG = rotatedCAG.translate([0, 0, (exteriorHull.getBounds()[0].z - rotatedCAG.getBounds()[0].z) + BOTTOM_CASE_MINIMUM_THICKNESS]);
+
       // Rotation around the Y axis changes the scale in the X axis when projected onto the original plane.
       // In theory we could take the rotated CAG and change all Z values to some constant (e.g., 0), but the
       // problem with that approach is that we change the plane in which connectors etc. lie, and we need
@@ -102,6 +103,21 @@ class Keyboard {
       };
     });
 
+    // While we're already layed out the thumb matrix objects relative
+    // to the primary matrix, the hulls were original 2D shapes, and
+    // don't have Z coordinates from the switches.
+    //
+    // We could eventually try to refactor this to maintiain 3D point
+    // connectors and even avoid some of the manual rotation and
+    // translation above, but for now it's easier to retain the code
+    // code here to connect up the thumb matrix to the proper point.
+    // The primary matrix happens not to need changing for now since
+    // we start out by setting the Z coordinate on each vertex to what
+    // we already know to be the bottom bound of the switch plate.
+    // Even if we did that hypothetical refactor, we'd still have to
+    // manually change all vertices (on a copy of the top CAG) to
+    // have equal Z coordinates (or alternatively apply the X scaling
+    // from a Y rotation we already have above to the initial hull).
     thumbMatrixCAGs.top = thumbMatrixCAGs.top.connectTo(
       thumbMatrixCAGs.top.properties["anchorSwitchFromPrimaryMatrix"],
       primaryMatrixCAGs.top.properties["primaryMatrix-anchorSwitch"],
@@ -218,7 +234,7 @@ class Keyboard {
   _addCutoutForHDMIConnector() {
     var spacerBounds = this.spacer.object.getBounds();
     var spacerHeight = spacerBounds[1].z - spacerBounds[0].z;
-    var depth = this.primaryMatrix.switchMatrix.spacerDepth + this.primaryMatrix.switchMatrix.caseAdditionalRadiiOffsets.exterior.top;
+    var depth = this.primaryMatrix.spacerDepth + this.primaryMatrix.caseAdditionalRadiiOffsets.exterior.top;
     var hdmiCutoutCSG = CSG.cube({radius: [15.4/2, depth / 2, spacerHeight / 2]});
     var hdmiCutoutBounds = hdmiCutoutCSG.getBounds();
     hdmiCutoutCSG.properties.hdmiCutoutBottomRight = new CSG.Connector(
@@ -251,7 +267,7 @@ class Keyboard {
   _addCutoutForUSBConnector() {
     var spacerBounds = this.spacer.object.getBounds();
     var spacerHeight = spacerBounds[1].z - spacerBounds[0].z;
-    var depth = this.primaryMatrix.switchMatrix.spacerDepth + this.primaryMatrix.switchMatrix.caseAdditionalRadiiOffsets.exterior.top + 1.5;
+    var depth = this.primaryMatrix.spacerDepth + this.primaryMatrix.caseAdditionalRadiiOffsets.exterior.top + 1.5;
     var usbCutoutCSG = CSG.cube({radius: [8.1/2, depth / 2, spacerHeight / 2]});
     usbCutoutCSG = usbCutoutCSG.translate([0, 0, -usbCutoutCSG.getBounds()[0].z]);
     var usbCutoutBounds = usbCutoutCSG.getBounds();
@@ -262,7 +278,8 @@ class Keyboard {
     );
 
     var usbCutoutPlateTopSide = null;
-    var primaryExteriorHull = this.primaryMatrix.switchMatrix._exteriorHull();
+    // TODO: Why is this calling an internal function?
+    var primaryExteriorHull = this.primaryMatrix._exteriorHull();
     var primaryExteriorBounds = primaryExteriorHull.getBounds();
     for (var i = 0; i < primaryExteriorHull.sides.length; ++i) {
       var side = primaryExteriorHull.sides[i];
@@ -305,7 +322,7 @@ class Keyboard {
   _buildSwitchMatrices() {
     var csgDependencyTree = new CSGLayoutDependencyGraph();
 
-    this.primaryMatrix = new SwitchMatrix({
+    var primarySwitchMatrix = new SwitchMatrix({
       name: "primary",
       placementMatrix: [
         [1, 1, 1, 1, 1, 1],
@@ -320,6 +337,10 @@ class Keyboard {
       anchorSwitchCoordinates: [3, 5],
       columnOffsets: [0, -4, 14, 5, -6, -5],
       rowOffsets: [],
+    });
+    this.primaryMatrix = new SwitchMatrixComponents({
+      csgDependencyTree: csgDependencyTree,
+      switchMatrix: primarySwitchMatrix,
       caseBaseRadiiFromSwitchCenters: {
         interior: 3,
         exterior: 10,
@@ -329,9 +350,9 @@ class Keyboard {
         interior: {bottom: -20},
       },
       squareTopRightCorner: true,
-    }).switchMatrixComponentsForDependencyTree(csgDependencyTree);
+    });
 
-    this.thumbMatrix = new SwitchMatrix({
+    var thumbSwitchMatrix = new SwitchMatrix({
       name: "thumb",
       placementMatrix: [
         [1, 1],
@@ -339,27 +360,43 @@ class Keyboard {
       ],
       columnOffsets: [],
       rowOffsets: [0, 6],
+    });
+    this.thumbMatrix = new SwitchMatrixComponents({
+      csgDependencyTree: csgDependencyTree,
+      switchMatrix: thumbSwitchMatrix,
       caseBaseRadiiFromSwitchCenters: {
         interior: 3,
         exterior: 10,
       },
-    }).switchMatrixComponentsForDependencyTree(csgDependencyTree);
-
-    this.thumbMatrix.allObjectNodes.forEach(function(node) {
-      var object = node.object;
-      object.properties.anchorSwitchFromPrimaryMatrix = new CSG.Connector(
-        [-4, SWITCH_CENTER_Y_SPACING + 3, object.properties["thumbMatrix-anchorSwitch"].point.z],
-        [0, 0, 1],
-        [0, 1, 0]
-      );
     });
 
-    csgDependencyTree.addConnection("thumbMatrix-plate", {
-      parent: [this.primaryMatrix.plate, "primaryMatrix-anchorSwitch"],
-      child: [this.thumbMatrix.plate, "anchorSwitchFromPrimaryMatrix"],
+    // The thumb matrix as a whole needs to be layed out relative to the
+    // primary matrix. Since almost everthing now depends on the switch
+    // layout, we setup that connection on the thumb matrix's initial key
+    // switch.
+    thumbSwitchMatrix.anchorSwitch.properties.anchorSwitchFromPrimaryMatrix = new CSG.Connector(
+      [-4, SWITCH_CENTER_Y_SPACING + 3, thumbSwitchMatrix.anchorSwitch.properties.center.point.z],
+      [0, 0, 1],
+      [0, 1, 0]
+    );
+    thumbSwitchMatrix.csgDependencyTree.addConnection("fillthisin", {
+      parent: [thumbSwitchMatrix.csgDependencyTree.nodeFor(primarySwitchMatrix.anchorDescriptor.keySwitch, {wrapExistingNode: true}), "center"],
+      child: [thumbSwitchMatrix.anchorDescriptor.keySwitch, "anchorSwitchFromPrimaryMatrix"],
       mirror: false,
       rotationFromNormal: THUMB_MATRIX_ROTATION,
     });
+
+    thumbSwitchMatrix.csgDependencyTree.resolve();
+
+    // This is currently needed for building the base, and we have to
+    // configure it before things get layed out. There's a refactor
+    // possibility described in the code that builds the base that
+    // would eliminate the need for adding this connector.
+    this.thumbMatrix.exteriorHull.object.properties.anchorSwitchFromPrimaryMatrix = new CSG.Connector(
+      [-4, SWITCH_CENTER_Y_SPACING + 3, this.thumbMatrix.exteriorHull.object.properties["thumbMatrix-anchorSwitch"].point.z],
+      [0, 0, 1],
+      [0, 1, 0]
+    );
 
     csgDependencyTree.resolve();
   }
@@ -373,4 +410,4 @@ if (typeof(self) == "object" && typeof(exports) == "undefined") {
 } else {
   moduleExports = exports;
 }
-moduleExports.Keyboard = Keyboard;
+moduleExports.SplitKeyboard = SplitKeyboard;
