@@ -19,7 +19,6 @@ class CombinedKeyboard {
     var primarySwitchPlateCSG = this.primaryMatrix.plate.object.subtract(this.primaryMatrix.switchHoles.object);
     var thumbSwitchPlateCSG = this.thumbMatrix.plate.object.subtract(this.thumbMatrix.switchHoles.object);
 
-this._connectionLine();
     var switchPlateCSG = primarySwitchPlateCSG.union(thumbSwitchPlateCSG);
 
     this.switchPlate = this.csgDependencyTree.nodeFor(switchPlateCSG);
@@ -34,6 +33,7 @@ this._connectionLine();
     // return this.primaryMatrix.switchHoles.object.union(this.thumbMatrix.switchHoles.object);
     // We can't resolve the combination graph until after the layout graph is finalized.
     this.csgDependencyTree.resolve();
+this._connectionLine();
     this.combiningGraph.resolve();
 
     const combinedSwitchPart = this.combiningGraph.nodeFor(this.switchPlate, {wrapExistingNode: true});
@@ -171,21 +171,81 @@ this._connectionLine();
     //   mirror: false,
     //   rotationFromNormal: THUMB_MATRIX_ROTATION,
     // });
-this._connectionLine();
+
+    // this._connectionLine();
 
     csgDependencyTree.resolve();
   }
 
   _connectionLine() {
-    return;
+    // return;
     var topLeftThumbSwitchHole = this.thumbMatrix.switchMatrix.matrix[0][0].keySwitch.object;
     var thumbSwitchPoints = [
       topLeftThumbSwitchHole.properties.bottomLeft,
       topLeftThumbSwitchHole.properties.topLeft,
       topLeftThumbSwitchHole.properties.topRight,
     ];
-    thumbSwitchPoints.forEach(function(point) {
-      console.log("point:", point);
+    console.log("bottomLeft", topLeftThumbSwitchHole.properties.bottomLeft);
+    console.log("topLeft", topLeftThumbSwitchHole.properties.topLeft);
+    console.log("topRight", topLeftThumbSwitchHole.properties.topRight);
+    var self = this;
+    var primaryMatrix = this.primaryMatrix.switchMatrix.matrix;
+    var blob = new CSG();
+    thumbSwitchPoints.forEach(function(p) {
+      var minDistance = null;
+      var minDistanceSwitch = null;
+      var minDistancePoint = null;
+      var minDistanceMidPoint = null;
+      // console.log("point:", p);
+      // d = ((x2 - x1)2 + (y2 - y1)2 + (z2 - z1)2)1/2
+      for (var row = 0; row < primaryMatrix.length; ++row) {
+        for (var col = 0; col < primaryMatrix[row].length; ++col) {
+          if (primaryMatrix[row][col].present) {
+            var sprop = primaryMatrix[row][col].keySwitch.object.properties;
+            [
+              sprop.bottomRight,
+              sprop.topRight,
+              sprop.bottomLeft,
+            ].forEach(function(p2) {
+              // console.log("v", primaryMatrix[row][col]);
+              // var p2 = primaryMatrix[row][col].keySwitch.object.properties.center.point;
+              var d = Math.sqrt(Math.pow(p2.x - p.x, 2) + Math.pow(p2.y - p.y, 2) + Math.pow(p2.z - p.z, 2));
+              // console.log("distance from", p2, "at", row, col, "is", d);
+              if (minDistance === null || d < minDistance) {
+                minDistance = d;
+                minDistanceSwitch = [row, col];
+                minDistancePoint = p2;
+                // minDistanceMidPoint = p;
+                minDistanceMidPoint = [(p.x + p2.x) / 2, (p.y + p2.y) / 2, (p.z + p2.z) / 2];
+              }
+            });
+          }
+        }
+      };
+      console.log("min distance switch:", minDistanceSwitch, "p", p, "midpoint", minDistanceMidPoint, "p2", minDistancePoint);
+      var b = CSG.cube({center: minDistanceMidPoint, radius: [3, 3, 3]}).setColor([0,1,0]);
+      // var b2 = CSG.cube({center: minDistancePoint, radius: [3, 3, 3]}).setColor([0,0,1]);
+      blob = blob.union(b);
+      // blob = blob.union(b2);
+    });
+
+    blob.properties["primaryMatrix-anchorSwitch"] = new CSG.Connector(
+      this.switchPlate.object.properties["primaryMatrix-anchorSwitch"].point,
+      [0, 0, 1],
+      [0, 1, 0]
+    );
+
+    this.csgDependencyTree.addConnection("blobs-to-switchPlate", {
+      parent: [this.switchPlate, "primaryMatrix-anchorSwitch"],
+      child: [this.csgDependencyTree.nodeFor(blob), "primaryMatrix-anchorSwitch"],
+      mirror: false,
+      rotationFromNormal: 0,
+    });
+    console.log("node for", blob);
+    this.combiningGraph.addConnection("blob-to-switchPlate", {
+      child: this.combiningGraph.nodeFor(this.switchPlate, {wrapExistingNode: true}),
+      parent: this.combiningGraph.nodeFor(this.csgDependencyTree.nodeFor(blob), {wrapExistingNode: true}),
+      operation: "union",
     });
   }
 

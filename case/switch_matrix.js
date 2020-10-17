@@ -35,9 +35,16 @@ class SwitchMatrix {
 
       this.matrix.push([]);
       for (var col = 0; col < this.placementMatrix[row].length; ++col) {
+        // We create a keyswitch object even if the placement matrix
+        // doesn't define a switch at these coordinates, because we
+        // need a phantom switch at empty locations in order to layout
+        // the next switch relative to that location. The `present`
+        // property shows whether or not later code should actually
+        // include this keyswitch in the rendered object.
         var result = {
           keySwitch: this.csgDependencyTree.nodeFor(switchHole()),
           cap: this.csgDependencyTree.nodeFor(keyCap()),
+          // `present` is set later.
         };
 
         result.keySwitch.name = "key" + String(row) + "x" + String(col);
